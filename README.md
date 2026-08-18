@@ -426,3 +426,14 @@ OmniGet is meant for personal use. Respect copyright and each platform's terms o
 ## License
 
 [GPL-3.0](LICENSE). The OmniGet name, logo, and Loop mascot are project trademarks not covered by the code license.
+
+---
+
+<details>
+<summary>AI Context</summary>
+
+This project uses the [project-knowledge](https://github.com/YahyaZekry/claude-code-skills) skill to maintain a `.project-knowledge/` folder — a living, AI-readable map of the codebase. Every AI session loads only the files relevant to the current task instead of scanning from scratch.
+
+Built by [Yahya Zekry](https://github.com/YahyaZekry/claude-code-skills).
+
+</details>
