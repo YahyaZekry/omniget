@@ -61,4 +61,6 @@ omniget/
 | `src/routes/+page.svelte` | Home screen (omnibox, hotkey UX) |
 | `src/lib/stores/download-store.ts` | Download queue state (frontend) |
 | `src/lib/i18n/` | All UI strings via `$t()` |
+| `src-tauri/desktop.template` | Handlebars desktop-entry template (`Categories=Network;FileTransfer;`) — used by deb, rpm, and AppImage bundling |
+| `scripts/linux/linuxdeploy-plugin-gtk.sh` | Vendored patch of Tauri's GTK plugin: skips missing sources (Arch's stale gdk-pixbuf pkg-config paths), mkdir -p before writing loaders.cache. Synced into `~/.cache/tauri/` by `pnpm tauri:appimage` |
 | `AGENTS.md` | Component patterns, tokens, a11y rules — read before UI work |

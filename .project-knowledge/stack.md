@@ -33,6 +33,7 @@ Rust workspace: root `src-tauri` + `omniget-core` (shared engine) + `omniget-plu
 | `pnpm build` | Production frontend build → `build/` |
 | `pnpm tauri build --bundles deb` | Release build (Linux deb; no signing key needed) |
 | `pnpm tauri build` | Release build, all bundle targets |
+| `pnpm tauri:appimage` | AppImage-only release build — syncs patched GTK plugin to `~/.cache/tauri/`, sets `NO_STRIP=1`, runs `tauri build --bundles appimage` |
 | `pnpm check` | `svelte-kit sync && svelte-check --tsconfig ./tsconfig.json` |
 | `pnpm test` | vitest run |
 | `cargo check` | Typecheck Rust without building |
@@ -49,3 +50,4 @@ Rust workspace: root `src-tauri` + `omniget-core` (shared engine) + `omniget-plu
 | `TAURI_CONFIG` | release.yml | Deep-merge config override — used to re-enable `bundle.createUpdaterArtifacts` on releases |
 | `LDAI_UPDATE_INFORMATION` | release.yml | AppImage zsync update info |
 | `NODE_OPTIONS` | release.yml | `--max-old-space-size=6144` for CI memory |
+| `NO_STRIP` | release.yml + `tauri:appimage` script | Disables linuxdeploy's bundled (old) `strip`, which fails on modern `.relr.dyn` relocations |

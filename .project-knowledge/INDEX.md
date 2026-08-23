@@ -1,9 +1,9 @@
 # OmniGet — Knowledge Index
 
-> Last updated: 2026-08-18
+> Last updated: 2026-08-22
 > Status: Active
 > Stack: Tauri 2 (Rust) + SvelteKit 2 / Svelte 5 · pnpm 10 · rusqlite (SQLite)
-> Current goal: Get PR #290 (source builds without updater signing key) merged upstream
+> Current goal: Local Linux packaging pipeline fully working (AppImage builds + Gear Lever installs); monitoring upstream for v0.8.6
 
 ## What This Project Does
 OmniGet is a free, open-source desktop download manager (Windows/macOS/Linux) that downloads online courses, videos, music, and books from 1,800+ sites using yt-dlp — with a built-in course player, EPUB/PDF reader, music library, notes app, and a plugin system. Your files stay local. (Repo: tonhowtf/omniget)
