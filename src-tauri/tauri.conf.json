@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "omniget",
-  "version": "0.8.5",
+  "version": "0.8.6",
   "identifier": "wtf.tonho.omniget",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -56,7 +56,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "createUpdaterArtifacts": false,
+    "createUpdaterArtifacts": true,
     "resources": {
       "../browser-extension/chrome/": "browser-extension/chrome/",
       "../browser-extension/firefox/": "browser-extension/firefox/"
