@@ -6,6 +6,7 @@
     notesExportGraphJson,
     notesMarkdownImport,
   } from "$lib/notes-bridge";
+import { t } from "$lib/i18n";
   import OpLogViewer from "./OpLogViewer.svelte";
 
   type Props = {
@@ -35,7 +36,7 @@
     busy = "refs";
     try {
       const r = await notesRefsRebuildAll();
-      onToast("ok", `Backlinks reconstruídos: ${r.total_refs} refs`);
+      onToast("ok", $t("study.notes.maintenance.backlinks_done", { n: r.total_refs }));
     } catch (e) {
       onToast("err", e instanceof Error ? e.message : String(e));
     } finally {
@@ -123,10 +124,9 @@
 </script>
 
 <article class="card">
-  <h3>Manutenção</h3>
+  <h3>{$t("study.notes.maintenance.title")}</h3>
   <p class="hint">
-    Tarefas de housekeeping. Reconstruir índices é seguro mas pode levar alguns segundos
-    em databases grandes.
+    {$t("study.notes.maintenance.desc")}
   </p>
 
   <div class="actions-grid">
@@ -144,7 +144,7 @@
       class="btn"
       onclick={rebuildRefs}
       disabled={busy !== null}
-      title="Recalcula a tabela de refs/backlinks varrendo todo o conteúdo."
+      title={$t("study.notes.maintenance.recalc_hint")}
     >
       {busy === "refs" ? "Calculando…" : "Reconstruir backlinks"}
     </button>
@@ -153,27 +153,27 @@
       class="btn"
       onclick={clearQueryCache}
       disabled={busy !== null}
-      title="Limpa cache de queries. Inofensivo; queries serão recalculadas."
+      title={$t("study.notes.maintenance.cache_hint")}
     >
-      {busy === "qcache" ? "Limpando…" : "Limpar cache de queries"}
+      {busy === "qcache" ? $t("study.notes.maintenance.clearing") : $t("study.notes.maintenance.clear_qcache")}
     </button>
     <button
       type="button"
       class="btn"
       onclick={exportGraph}
       disabled={busy !== null}
-      title="Baixa o grafo de notes (nodes + edges) como JSON pra inspeção/backup."
+      title={$t("study.notes.maintenance.graph_hint")}
     >
-      {busy === "graph" ? "Exportando…" : "Exportar grafo (JSON)"}
+      {busy === "graph" ? $t("study.notes.maintenance.exporting") : $t("study.notes.maintenance.export_graph")}
     </button>
     <button
       type="button"
       class="btn"
       onclick={pickImport}
       disabled={busy !== null || importing}
-      title="Lê um .md do disco e cria uma página com o conteúdo."
+      title={$t("study.notes.maintenance.import_tooltip")}
     >
-      Importar markdown
+      {$t("study.notes.maintenance.import_btn")}
     </button>
     <input
       type="file"
@@ -195,20 +195,18 @@
       if (e.target === e.currentTarget) cancelImport();
     }}
   >
-    <div class="modal" role="dialog" aria-label="Confirmar importação" aria-modal="true">
-      <h3>Importar markdown?</h3>
+    <div class="modal" role="dialog" aria-label={$t("study.notes.maintenance.import_aria")} aria-modal="true">
+      <h3>{$t("study.notes.maintenance.import_confirm_title")}</h3>
       <p class="meta">
         <strong>{importPreview.name}</strong>
         <span class="muted">· {importPreview.lines} linhas</span>
       </p>
       <p class="hint">
-        Vai criar uma página chamada <code>{importPreview.name}</code> e parsear o markdown
-        em blocos hierárquicos.
+        {$t("study.notes.maintenance.import_hint", { name: importPreview.name })}
       </p>
 
       <p class="warn-soft">
-        Se já existir uma página com esse nome, o backend devolve erro e nada
-        é importado.
+        {$t("study.notes.maintenance.import_exists")}
       </p>
 
       <footer class="foot">
@@ -238,7 +236,7 @@
   .card {
     padding: 14px 16px;
     background: var(--surface);
-    border: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border: none;
     border-radius: var(--border-radius);
     display: flex;
     flex-direction: column;
@@ -266,7 +264,7 @@
   .btn {
     padding: 8px 12px;
     border-radius: var(--border-radius);
-    border: 1px solid var(--input-border);
+    border: none;
     background: var(--bg);
     color: var(--text);
     font: inherit;
@@ -304,7 +302,7 @@
   .modal {
     width: min(480px, calc(100vw - 48px));
     background: var(--surface);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     padding: 18px 20px;
     display: flex;
@@ -327,9 +325,9 @@
   .warn-soft {
     margin: 0;
     padding: 8px 10px;
-    background: color-mix(in oklab, var(--warning, #f59e0b) 12%, transparent);
+    background: color-mix(in oklab, var(--warning) 12%, transparent);
     border-radius: var(--border-radius);
-    color: var(--warning, #f59e0b);
+    color: var(--warning);
     font-size: 12px;
   }
   code {

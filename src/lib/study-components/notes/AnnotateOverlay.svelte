@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+import { t } from "$lib/i18n";
   import { notesLessonsLink } from "$lib/notes-bridge";
 
   type Props = {
@@ -83,7 +84,7 @@
   });
 </script>
 
-<div class="annotate-overlay" role="dialog" aria-label="Anotação de aula">
+<div class="annotate-overlay" role="dialog" aria-label={$t("study.notes.nb.annotate_aria")}>
   <header class="head">
     <div class="title-block">
       <strong>Anotar momento</strong>
@@ -136,7 +137,7 @@
     display: flex;
     flex-direction: column;
     background: var(--surface);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     box-shadow: 0 12px 32px color-mix(in oklab, black 32%, transparent);
     z-index: 95;
@@ -147,7 +148,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 8px 12px;
-    border-bottom: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border-bottom: none;
   }
   .title-block {
     display: flex;
@@ -196,7 +197,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 6px 12px;
-    border-top: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border-top: none;
     font-size: 11px;
   }
   .state {

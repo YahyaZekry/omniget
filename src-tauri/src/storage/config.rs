@@ -24,7 +24,14 @@ pub fn load_settings(app: &AppHandle) -> AppSettings {
     };
 
     match store.get(STORE_KEY) {
-        Some(val) => serde_json::from_value::<AppSettings>(val.clone()).unwrap_or_default(),
+        Some(val) => {
+            let mut settings =
+                serde_json::from_value::<AppSettings>(val.clone()).unwrap_or_default();
+            if settings.migrate() {
+                let _ = save_settings(app, &settings);
+            }
+            settings
+        }
         None => AppSettings::default(),
     }
 }

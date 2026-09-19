@@ -3,6 +3,7 @@
   import SettingsSlider from "./SettingsSlider.svelte";
   import SettingsToggle from "./SettingsToggle.svelte";
   import { pluginInvoke } from "$lib/plugin-invoke";
+  import { t } from "$lib/i18n";
   import type { StudySettings } from "$lib/study-bridge";
 
   type Props = {
@@ -44,7 +45,7 @@
 <section class="tab">
   <SettingsField
     label="Watcher ativado"
-    description="Detecta automaticamente quando arquivos de curso são adicionados ou removidos"
+    description={$t("study.settings.library.watch_desc")}
   >
     <SettingsToggle
       value={library.watcher_enabled ?? true}
@@ -65,13 +66,13 @@
   </SettingsField>
 
   <SettingsField
-    label="Limpeza automática"
-    description="Roda vacuum periódico (apaga seek logs antigos, notificações dispensadas, recents fora do top 50)"
+    label={$t("study.settings.library.auto_cleanup")}
+    description={$t("study.settings.library.auto_cleanup_desc")}
   >
     <SettingsToggle
       value={library.auto_vacuum ?? true}
       onChange={(v) => setLibrary("auto_vacuum", v)}
-      ariaLabel="Limpeza automática"
+      ariaLabel={$t("study.settings.library.auto_cleanup")}
     />
   </SettingsField>
 
@@ -91,8 +92,8 @@
 
   <div class="actions">
     <div>
-      <strong>Re-scanear biblioteca</strong>
-      <p class="hint">Força detecção de novos cursos/aulas e dispara notificações</p>
+      <strong>{$t("study.settings.library.rescan_title")}</strong>
+      <p class="hint">{$t("study.settings.library.rescan_hint")}</p>
       {#if rescanReport}
         <p class="report">{rescanReport}</p>
       {/if}
@@ -117,7 +118,7 @@
     padding: 16px;
     margin-top: 16px;
     background: color-mix(in oklab, var(--accent) 4%, transparent);
-    border: 1px solid color-mix(in oklab, var(--content-border) 40%, transparent);
+    border: none;
     border-radius: 8px;
   }
 

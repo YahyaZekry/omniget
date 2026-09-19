@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>wtf.tonho.omniget</id>
   <name>Omniget</name>
-  <summary>Download media from multiple platforms</summary>
+  <summary>Course and video downloader, yt-dlp GUI and AI agents desktop app</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <developer id="wtf.tonho">
@@ -10,19 +10,51 @@
   </developer>
   <description>
     <p>
-      Omniget is a desktop application to download videos, courses, and media
-      from platforms like YouTube, Udemy, Hotmart, Telegram, Instagram, TikTok,
-      Twitter, Reddit, Twitch, Pinterest, Bluesky, and Vimeo.
+      OmniGet downloads the Udemy and Hotmart courses you bought, YouTube, Instagram,
+      TikTok, X, Reddit, Twitch, Pinterest, Telegram, torrents and about 1,800 other
+      sites through a graphical interface for yt-dlp, then plays, reads, transcribes
+      and converts what you saved.
+    </p>
+    <p>
+      It also runs AI coding agents on your machine: Claude Code, Codex, Gemini CLI
+      and local Ollama models, with permissions, undo, background jobs, loops that
+      repeat until your tests pass, and a built-in MCP server.
     </p>
     <p>Features include:</p>
     <ul>
-      <li>Multi-platform media downloading</li>
-      <li>Course downloading from Udemy and Hotmart</li>
-      <li>Telegram media browser and batch downloader</li>
-      <li>Media format conversion</li>
-      <li>Queue management with concurrent downloads</li>
+      <li>Udemy, Hotmart, Kiwify and Rocketseat course downloader with a course player</li>
+      <li>YouTube downloader and yt-dlp GUI with queue, resume and subtitles</li>
+      <li>Instagram, TikTok, X, Reddit, Pinterest, Twitch, Bilibili and Telegram downloads</li>
+      <li>156 tools in 24 categories: transcription, PDF, video, images and more</li>
+      <li>AI agents with per-folder permissions, undo, jobs, loops and triggers</li>
+      <li>MCP server with 49 tools for Claude Code, Cursor and VS Code</li>
+      <li>The World: an isometric house where your agents are seen working</li>
     </ul>
   </description>
+  <categories>
+    <category>Network</category>
+    <category>AudioVideo</category>
+    <category>Development</category>
+    <category>Utility</category>
+  </categories>
+  <keywords>
+    <keyword>downloader</keyword>
+    <keyword>yt-dlp</keyword>
+    <keyword>youtube</keyword>
+    <keyword>udemy</keyword>
+    <keyword>hotmart</keyword>
+    <keyword>course</keyword>
+    <keyword>video</keyword>
+    <keyword>instagram</keyword>
+    <keyword>tiktok</keyword>
+    <keyword>torrent</keyword>
+    <keyword>ai agents</keyword>
+    <keyword>claude code</keyword>
+    <keyword>codex</keyword>
+    <keyword>ollama</keyword>
+    <keyword>mcp</keyword>
+    <keyword>llm</keyword>
+  </keywords>
   <url type="homepage">https://github.com/tonhowtf/omniget</url>
   <url type="bugtracker">https://github.com/tonhowtf/omniget/issues</url>
   <url type="vcs-browser">https://github.com/tonhowtf/omniget</url>
@@ -42,6 +74,39 @@
   </branding>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.10.0" date="2026-09-19">
+      <description>
+        <p>OmniGet gains the system that goes around an AI agent. In the new LLM section you pick an agent, attach a folder and ask for a change: the agent reads, edits, applies patches and runs commands inside that folder only, asks before anything that writes and shows the command or the diff, and one click undoes a whole turn from a shadow git that never touches your repository. "Always" remembers a kind of command, such as git status, instead of a whole line. Jobs outlive the window, Loops repeat rounds until a check command passes or the rounds or minutes run out, and triggers start a job from a cron line or a webhook on the local bridge; the command line drives the same queue with omniget agent run, loop and jobs. Claude Code and Codex accounts plug in with their quota on screen, any CLI that speaks the Agent Client Protocol joins the roster as an agent, agents share a project knowledge base of markdown notes, and skills install from owner/repo after a scan. Models come from a local server or your own keys, with a router that falls back when a quota runs out.</p>
+        <p>The World is a house where your agents live: it is made on your first visit, the agents of your roster move in, follow a routine, walk to the workbench when a tool runs, and their energy is their quota. Open the house to get a code and a friend can walk in, see your agents and chat; your app stays the authority and the room server only relays, with a hello signed by your local profile instead of an account. The room server is a single binary you can host yourself. A floating Omni pet reacts to what the agents do, including Claude Code or Codex running in a terminal, and answers permission prompts. An optional limits strip on a screen edge shows one ring per coding assistant with how much of each usage limit is gone and when it resets; it is off by default and reads only the login each tool already keeps on your machine. The experimental OmniDisc chat was retired to make room for this. The agent shell is sandboxed on macOS only.</p>
+      </description>
+    </release>
+    <release version="0.9.2" date="2026-09-11">
+      <description>
+        <p>Tools grows from 108 to 156, with eight new categories: Audio, CTF, Twitch, Music, Reddit, Bilibili, Games and LinkedIn. Video tools compress to a target size in two passes, make GIFs and WebPs, cut out silences, convert, burn and resync subtitles, take out flicker, grain and banding, stabilize shaky footage and turn a clip into a WhatsApp or Telegram sticker that fits the size limit. Audio tools normalize loudness to EBU R128 and remove background noise. PDF tools repair broken files, add a password, a watermark or page numbers, crop margins, build a bookmark outline, export clean Markdown and find text still sitting underneath a black redaction bar. Image tools read and strip EXIF and GPS, build favicon and app icon packs, compress in batches, find near-duplicates, slice and pack spritesheets and stitch scrolled screenshots. Files gains a secure shred, System an ad and telemetry hosts blocker, and CTF brings hashes, magic bytes and entropy, classical ciphers, XOR brute force, encodings and frequency analysis.</p>
+        <p>Twitch saves a channel's emotes and badges from BTTV, FFZ and 7TV and exports chat replays. Reddit downloads v.redd.it videos with sound and galleries, archives a thread with every comment and reads your data export. Music mirrors a playlist onto your local library, fetches synced lyrics from LRCLIB and opens your full Spotify history. LinkedIn reads your data export offline: connections, messages, a profile score and what advertisers know about you. Games checks ProtonDB tiers for your Steam library and sorts Switch, Game Bar, ShadowPlay, OBS and Steam captures by game. Bilibili exports danmaku without downloading the video and burns it onto a clip. The browser extension finds playlists a player builds in JavaScript that never cross the network, estimates HLS sizes, pairs a video track with its audio, rejects HTML error pages served as media, sends only the headers a download needs, lets you edit its capture rules and can back up the list of your installed extensions. Fixes: a batch of queued downloads could lose items because they shared an id, Bilibili collection links in the current format were not recognized, the extension installer reported success when it copied nothing, and AppImages now install through Gear Lever.</p>
+      </description>
+    </release>
+    <release version="0.9.1" date="2026-09-05">
+      <description>
+        <p>OmniGet gains a Tools section: 108 single-purpose tools in 16 categories, each an isolated command with a tile in the app and an entry on the built-in MCP server, so an AI agent can drive them too. Instagram gets 24 tools over your own session (stories without marking them seen, highlights, who does not follow back, ghost followers, analytics, giveaway picker, publishing), X gets 10 (thread unroll, post to image, profile media, bookmarks, your archive, Grok), Pinterest gets 10 (original-quality pins, board and profile backup with incremental sync, search without AI or ads, duplicates, palettes). Speech tools transcribe offline with whisper.cpp, speak with Edge voices, translate and dub subtitles. PDF tools merge, split, compress, convert, OCR and sanitize on the PDFium the app already manages. System tools clean caches, map the disk, manage startup items and uninstall leftovers, with Windows-only debloat, registry, privacy and hardening. AI tools compare model prices, track spending, manage Ollama models and an API key vault.</p>
+        <p>The interface was rebuilt with a single amber accent, a glass sidebar, colored tile icons, a new app icon and a three-step onboarding. The download engine starts yt-dlp as a zipapp on a system Python when one exists, adapts connections per site and halves them on rate limits, segments large direct files properly, stops retrying dead sources and keeps the exact command of every download so it can be edited and rerun. The Courses plugin reaches 1.1.0: Hotmart signs in through its new OIDC flow, Rocketseat validates logins properly and lists the whole catalog, Meta-Analysis Academy is a new platform, and sections can be chosen before downloading. The browser extension groups cookies by real site so Brazilian domains no longer share one bucket, adds Rocketseat and a Force H.264 switch. The League of Legends companion is on by default and gains a profile editor, skin and ward roulette, champion and lane raffles, full match history through the client gateway and an AI coach, all marked beta. Two fixes: the interface could show no text when a translation failed to load, and Settings could spin forever after a failed settings load.</p>
+      </description>
+    </release>
+    <release version="0.9.0" date="2026-08-29">
+      <description>
+        <p>Chat ships turned on, already connected, with voice, video and screen sharing built in. Screen sharing now reaches viewers: streams are discovered from the media layer rather than from a status message that could go missing, and the person sharing sees a preview of their own screen. Calls and screen sharing work on Linux through the desktop's screen-sharing portal on both X11 and Wayland, using VAAPI or NVENC where the machine has them. The macOS microphone works again — the app now asks for the permission macOS requires, where before the system quietly handed it an empty microphone. Files sent through chat are deleted from the server after thirty minutes and are encrypted at rest until then, so what the server no longer holds cannot leak later; each attachment shows how long it has left. If the disk fills, everyone is warned while there is still room. Animations and the share preview stop while the window is in the background, so a chat behind a game costs as little as possible.</p>
+      </description>
+    </release>
+    <release version="0.8.9" date="2026-08-28">
+      <description>
+        <p>Menus in the chat opened where nothing could see them, so the buttons that opened them looked broken. The server rail hides horizontal overflow because it scrolls, and its plus menu was placed outside the rail's width, so clicking it opened a menu the browser then erased. The message list was worse: every row is layout-contained for scrolling performance, which anchors even a fixed-position element to that one row, so the message menu and the reaction picker were cut off for anything in the lower half of the conversation and the image viewer opened as a sliver instead of filling the window. Menus are now measured from the button that opens them and drawn outside the list, flipping above when they would fall off the bottom, and they close when you click away, press Escape, resize or scroll.</p>
+      </description>
+    </release>
+    <release version="0.8.8" date="2026-08-28">
+      <description>
+        <p>OmniGet gains a chat of its own. Turn on "Chat (OmniDisc)" in Settings and the app connects to a server you host yourself for text, voice, screen sharing and file transfer with the people you choose, without a third party in the middle. Direct messages and the files sent in them are end-to-end encrypted with MLS, and the key for an encrypted call is derived from that same group rather than handed out by the server, so the operator of an instance cannot listen in. Voice runs entirely in Rust instead of the web view, which keeps a call under five percent of one core; screen sharing on macOS captures with ScreenCaptureKit and encodes with the machine's own VideoToolbox, so 1440p at 120 frames a second is hardware work rather than processor work, and per-application audio lets you share a game's sound without sharing everything else. Windows gets the same set: capture goes through Windows.Graphics.Capture, application and system audio through WASAPI process loopback, and encoding prefers whatever hardware H.264 encoder the machine has — Intel, AMD or NVIDIA — falling back to software when there is none. The feature is off by default and is new, so treat it as such; on Linux the calls, files and text work while screen capture is still to come. Separately, the banner that appears when yt-dlp is missing used to display the names of its own translation strings instead of a sentence, because those strings existed in no language at all. Traditional Chinese shipped as a language but appeared in neither language menu, and Russian was missing from the one shown during setup; both are now offered wherever the others are. Windows builds link the C runtime statically and no longer require the Visual C++ redistributable, and the Debian package now declares the audio library it needs instead of failing at first launch. Two fixes to how the app keeps its secrets. On a development build the keychain prompt used to return on every launch no matter how many times it was answered, because macOS ties the permission to the exact binary and a development build is rebuilt unsigned every time; those builds now use the encrypted file store, and only signed releases touch the keychain. Secrets are also read once per launch instead of once per reconnection.</p>
+      </description>
+    </release>
     <release version="0.8.6" date="2026-08-18">
       <description>
         <p>Opening Settings could bring the machine to its knees. Each dependency row ran an effect that read its own loading flag and then wrote it, so every finished round trip scheduled the next one — and the archived-versions lookup behind it called the routine that downloads yt-dlp and starts a freshness check and a JS-runtime check, spawning a yt-dlp and a deno process every pass. Locating a binary no longer starts anything. Cancelled downloads stay cancelled: a removed item could be recreated by a progress event still in flight, finish its bar and sit in the list refusing to be removed. Six command palette entries showed raw translation keys because the keys existed nowhere; they now reuse the sidebar's own names, and the three entries that duplicated navigation exactly were removed in favour of the paste action that was translated in every language and never wired up. Bilibili collection links of the channel/collectiondetail form downloaded the uploader's entire channel instead of the collection. Instagram Reels whose metadata exposes only a cover image are downloaded as video instead of being saved as a JPG and reported as a successful video. On macOS the browser-login window now reads the WebView's own cookie store, so HttpOnly session cookies are captured instead of silently missing — the reason a visibly logged-in Hotmart session still reported itself as unauthenticated. A custom PDFium is reported as installed and is actually loaded by the reader, instead of being recorded, displayed and ignored. The batch download mode selector is back for multiple URLs. And building from source no longer needs the release signing key.</p>

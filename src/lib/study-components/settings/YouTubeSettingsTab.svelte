@@ -1,6 +1,7 @@
 <script lang="ts">
   import SettingsField from "./SettingsField.svelte";
   import { pluginInvoke } from "$lib/plugin-invoke";
+  import { t } from "$lib/i18n";
 
   type PotokenVisitor = {
     has_token: boolean;
@@ -174,7 +175,7 @@
     const s = v.expires_in_seconds ?? 0;
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
-    return `válido por ${h}h${m}min`;
+    return $t("study.settings.youtube.valid_for", { h, m });
   }
 
   $effect(() => {
@@ -183,7 +184,7 @@
 </script>
 
 <section class="tab">
-  <SettingsField label="Cliente YouTube" description="Estado do plugin study para reprodução de áudio do YouTube/Music.">
+  <SettingsField label={$t("study.settings.youtube.client")} description={$t("study.settings.youtube.client_desc")}>
     {#if loading && !clientStatus}
       <span class="muted">Carregando…</span>
     {:else if clientStatus}
@@ -197,7 +198,7 @@
           {#if clientStatus.player_cache_id}
             <code>{clientStatus.player_cache_id}</code>
             {#if clientStatus.player_cache_age_seconds !== null}
-              <span class="muted"> · {Math.floor(clientStatus.player_cache_age_seconds / 60)}min atrás</span>
+              <span class="muted"> · {$t("study.settings.youtube.cache_age", { n: Math.floor(clientStatus.player_cache_age_seconds / 60) })}</span>
             {/if}
           {:else}
             <span class="muted">vazio</span>
@@ -206,22 +207,22 @@
       </dl>
     {/if}
     <div class="row">
-      <button class="btn" disabled={loading} onclick={invalidatePlayerCache}>Limpar cache do player.js</button>
+      <button class="btn" disabled={loading} onclick={invalidatePlayerCache}>{$t("study.settings.youtube.clear_player_cache")}</button>
     </div>
   </SettingsField>
 
-  <SettingsField label="PoToken" description="Token de autenticação assinado pela YouTube. Gerado automaticamente via bgutils-js no boa_engine.">
+  <SettingsField label={$t("study.settings.youtube.potoken")} description={$t("study.settings.youtube.potoken_desc")}>
     {#if potokenStatus}
       <dl class="status-grid">
-        <dt>Mint disponível</dt><dd><code>{potokenStatus.minting_available ? "sim" : "não"}</code></dd>
+        <dt>{$t("study.settings.youtube.mint_available")}</dt><dd><code>{potokenStatus.minting_available ? $t("study.common.confirm") : $t("study.common.cancel")}</code></dd>
         <dt>Visitor token</dt><dd>{formatTokenStatus(potokenStatus.visitor)}</dd>
-        <dt>Content tokens em cache</dt><dd><code>{potokenStatus.content_cached_count}</code></dd>
+        <dt>{$t("study.settings.youtube.content_tokens_cached")}</dt><dd><code>{potokenStatus.content_cached_count}</code></dd>
       </dl>
     {/if}
     <div class="row">
-      <button class="btn" disabled={loading} onclick={clearPotokens}>Limpar PoTokens</button>
+      <button class="btn" disabled={loading} onclick={clearPotokens}>{$t("study.settings.youtube.clear_potokens")}</button>
       <button class="btn ghost" onclick={() => (manualPanelOpen = !manualPanelOpen)}>
-        {manualPanelOpen ? "Fechar token manual" : "Cole token manual…"}
+        {manualPanelOpen ? $t("study.settings.youtube.close_manual_token") : $t("study.settings.youtube.paste_manual_token")}
       </button>
     </div>
     {#if manualPanelOpen}
@@ -249,7 +250,7 @@
     {/if}
   </SettingsField>
 
-  <SettingsField label="Testar vídeo" description="Tenta cada cliente do cascade e mostra qual conseguiu cifra/stream. Útil pra debug.">
+  <SettingsField label={$t("study.settings.youtube.test_video")} description={$t("study.settings.youtube.test_video_desc")}>
     <div class="test-row">
       <input
         type="text"
@@ -347,7 +348,7 @@
   .btn.primary {
     background: var(--accent);
     border-color: var(--accent);
-    color: white;
+    color: var(--on-accent);
   }
   .btn.ghost {
     background: transparent;
@@ -417,7 +418,7 @@
     font-size: 13px;
     margin: 10px 0;
   }
-  .test-summary .error { color: var(--danger, #d33); }
+  .test-summary .error { color: var(--danger); }
   .cascade-table {
     width: 100%;
     border-collapse: collapse;
@@ -441,7 +442,7 @@
     color: var(--secondary);
   }
   .error-message {
-    color: var(--danger, #d33);
+    color: var(--danger);
     font-size: 12px;
     margin: 0;
   }

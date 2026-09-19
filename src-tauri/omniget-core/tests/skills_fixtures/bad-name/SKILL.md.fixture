@@ -1,0 +1,6 @@
+---
+name: Bad_Name
+description: The name has an underscore and a capital letter, both refused by the spec.
+---
+
+# Bad name

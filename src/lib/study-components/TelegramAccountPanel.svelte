@@ -1,5 +1,6 @@
 <script lang="ts">
   import { showToast } from "$lib/stores/toast-store.svelte";
+  import { t } from "$lib/i18n";
   import {
     telegramGetSelf,
     telegramAccountsList,
@@ -113,7 +114,7 @@
       await telegramAccountsRestore({ id: confirmRestoreId });
       showToast(
         "info",
-        "Sessão ativada. Reinicie o app pra entrar nesta conta.",
+        $t("study.telegram.account.session_activated"),
       );
       confirmRestoreId = null;
       await load();
@@ -129,7 +130,7 @@
     actionBusy = true;
     try {
       await telegramAccountsRemove({ id: confirmDeleteId });
-      showToast("info", "Perfil removido");
+      showToast("info", $t("study.telegram.account.profile_removed"));
       confirmDeleteId = null;
       await load();
     } catch (e: any) {
@@ -177,13 +178,13 @@
     onclick={(e) => { if (e.target === e.currentTarget) close(); }}
     onkeydown={(e) => { if (e.key === "Escape") close(); }}
   >
-    <aside class="panel" role="dialog" aria-modal="true" aria-label="Gerenciar contas">
+    <aside class="panel" role="dialog" aria-modal="true" aria-label={$t("study.telegram.account.manage_aria")}>
       <header class="panel-header">
         <div>
-          <h2>Contas Telegram</h2>
-          <p class="subtitle">Salve e alterne entre múltiplas sessões.</p>
+          <h2>{$t("study.telegram.account.title")}</h2>
+          <p class="subtitle">{$t("study.telegram.account.subtitle")}</p>
         </div>
-        <button type="button" class="icon-btn" onclick={close} aria-label="Fechar">
+        <button type="button" class="icon-btn" onclick={close} aria-label={$t("study.telegram.account.close")}>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 6L6 18" />
             <path d="M6 6l12 12" />
@@ -198,7 +199,7 @@
           <div class="status status-error">{error}</div>
         {:else}
           <section class="active-card">
-            <span class="section-label">Conta ativa</span>
+            <span class="section-label">{$t("study.telegram.account.active_account")}</span>
             <div class="active-row">
               <div class="active-avatar">
                 {me ? initials(`${me.first_name} ${me.last_name ?? ""}`.trim() || sessionPhone) : "?"}
@@ -208,7 +209,7 @@
                   {#if me}
                     {me.first_name}{me.last_name ? " " + me.last_name : ""}
                   {:else}
-                    {sessionPhone || "Sessão local"}
+                    {sessionPhone || $t("study.telegram.account.local_session")}
                   {/if}
                 </span>
                 <span class="active-meta">
@@ -216,7 +217,7 @@
                   {#if me?.username}<span class="dot">·</span>@{me.username}{/if}
                 </span>
               </div>
-              <span class="active-badge">Ativa</span>
+              <span class="active-badge">{$t("study.telegram.account.active_badge")}</span>
             </div>
             <button
               type="button"
@@ -234,14 +235,14 @@
 
           <section>
             <div class="section-row">
-              <span class="section-label">Perfis salvos</span>
+              <span class="section-label">{$t("study.telegram.account.saved_profiles")}</span>
               <span class="section-count">{profiles.length}</span>
             </div>
             {#if profiles.length === 0}
               <div class="empty-state">
-                <p class="empty-title">Nenhum perfil salvo ainda.</p>
+                <p class="empty-title">{$t("study.telegram.account.no_profiles")}</p>
                 <p class="empty-desc">
-                  Salve sua sessão atual antes de fazer logout — assim você consegue voltar pra ela depois sem refazer login.
+                  {$t("study.telegram.account.logout_hint")}
                 </p>
               </div>
             {:else}
@@ -261,7 +262,7 @@
                           autofocus
                         />
                         <button type="submit" class="ghost-btn" disabled={renameBusy || !renameLabel.trim()}>OK</button>
-                        <button type="button" class="ghost-btn" onclick={() => (renameId = null)} disabled={renameBusy}>Cancelar</button>
+                        <button type="button" class="ghost-btn" onclick={() => (renameId = null)} disabled={renameBusy}>{$t("study.common.cancel")}</button>
                       </form>
                     {:else}
                       <div class="profile-row">
@@ -276,11 +277,11 @@
                         </div>
                       </div>
                       <div class="profile-actions">
-                        <button type="button" class="ghost-btn" onclick={() => startRename(p)}>Renomear</button>
+                        <button type="button" class="ghost-btn" onclick={() => startRename(p)}>{$t("study.telegram.account.rename")}</button>
                         <button type="button" class="primary-btn small" onclick={() => (confirmRestoreId = p.id)}>
                           Ativar
                         </button>
-                        <button type="button" class="danger-btn small" onclick={() => (confirmDeleteId = p.id)} aria-label="Remover">
+                        <button type="button" class="danger-btn small" onclick={() => (confirmDeleteId = p.id)} aria-label={$t("study.common.delete")}>
                           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="3 6 5 6 21 6" />
                             <path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6" />
@@ -296,13 +297,13 @@
 
           <section>
             <div class="section-row">
-              <span class="section-label">Backups</span>
+              <span class="section-label">{$t("study.telegram.account.backups")}</span>
               <button type="button" class="ghost-btn" onclick={backupNow} disabled={actionBusy || (!sessionPhone && !me)}>
                 Criar backup agora
               </button>
             </div>
             {#if backups.length === 0}
-              <p class="empty-text">Nenhum backup. Faça um antes de mudanças importantes na sessão.</p>
+              <p class="empty-text">{$t("study.telegram.account.no_backup")}</p>
             {:else}
               <ul class="backup-list">
                 {#each backups as b (b.name)}
@@ -327,22 +328,22 @@
       onkeydown={() => {}}
     >
       <div class="dialog" role="dialog" aria-modal="true">
-        <h3>Salvar conta atual como perfil</h3>
-        <p>Crie um nome pra reconhecer essa conta depois (ex: "Pessoal", "Trabalho").</p>
+        <h3>{$t("study.telegram.account.save_current_title")}</h3>
+        <p>{$t("study.telegram.account.save_current_desc")}</p>
         <form onsubmit={(e) => { e.preventDefault(); commitSave(); }}>
           <input
             type="text"
             class="input"
-            placeholder="Nome do perfil"
+            placeholder={$t("study.telegram.account.profile_name_placeholder")}
             bind:value={saveLabel}
             disabled={saveBusy}
             autofocus
             required
           />
           <div class="dialog-actions">
-            <button type="button" class="ghost-btn" onclick={() => (saveOpen = false)} disabled={saveBusy}>Cancelar</button>
+            <button type="button" class="ghost-btn" onclick={() => (saveOpen = false)} disabled={saveBusy}>{$t("study.common.cancel")}</button>
             <button type="submit" class="primary-btn" disabled={saveBusy || !saveLabel.trim()}>
-              {saveBusy ? "Salvando..." : "Salvar perfil"}
+              {saveBusy ? $t("study.common.saving") : $t("study.telegram.account.save_profile")}
             </button>
           </div>
         </form>
@@ -359,12 +360,12 @@
       onkeydown={() => {}}
     >
       <div class="dialog" role="dialog" aria-modal="true">
-        <h3>Ativar perfil "{p?.label}"?</h3>
+        <h3>{$t("study.telegram.account.switch_title", { name: p?.label })}</h3>
         <p>
-          Sua sessão atual será preservada como backup automático. O app precisa ser reiniciado para concluir a troca.
+          {$t("study.telegram.account.switch_hint")}
         </p>
         <div class="dialog-actions">
-          <button type="button" class="ghost-btn" onclick={() => (confirmRestoreId = null)} disabled={actionBusy}>Cancelar</button>
+          <button type="button" class="ghost-btn" onclick={() => (confirmRestoreId = null)} disabled={actionBusy}>{$t("study.common.cancel")}</button>
           <button type="button" class="primary-btn" onclick={commitRestore} disabled={actionBusy}>
             {actionBusy ? "Ativando..." : "Ativar e reiniciar"}
           </button>
@@ -382,14 +383,14 @@
       onkeydown={() => {}}
     >
       <div class="dialog" role="dialog" aria-modal="true">
-        <h3>Remover perfil "{p?.label}"?</h3>
+        <h3>{$t("study.telegram.account.delete_title", { name: p?.label })}</h3>
         <p class="warn">
-          A sessão deste perfil será apagada permanentemente. Você precisará refazer login pra acessar essa conta novamente.
+          {$t("study.telegram.account.delete_hint")}
         </p>
         <div class="dialog-actions">
-          <button type="button" class="ghost-btn" onclick={() => (confirmDeleteId = null)} disabled={actionBusy}>Cancelar</button>
+          <button type="button" class="ghost-btn" onclick={() => (confirmDeleteId = null)} disabled={actionBusy}>{$t("study.common.cancel")}</button>
           <button type="button" class="danger-btn" onclick={commitDelete} disabled={actionBusy}>
-            {actionBusy ? "Removendo..." : "Remover perfil"}
+            {actionBusy ? $t("study.telegram.account.removing") : $t("study.telegram.account.remove_profile")}
           </button>
         </div>
       </div>
@@ -433,7 +434,7 @@
     align-items: flex-start;
     gap: var(--padding);
     padding: var(--padding);
-    border-bottom: 1px solid var(--input-border);
+    border-bottom: none;
   }
 
   .panel-header > div {
@@ -505,7 +506,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    border: 1px solid color-mix(in oklab, var(--green, #10b981) 35%, transparent);
+    border: 1px solid color-mix(in oklab, var(--green) 35%, transparent);
   }
 
   .active-row {
@@ -518,7 +519,7 @@
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--blue), color-mix(in oklab, var(--blue) 60%, var(--green, #10b981)));
+    background: linear-gradient(135deg, var(--blue), color-mix(in oklab, var(--blue) 60%, var(--green)));
     color: #fff;
     display: flex;
     align-items: center;
@@ -553,7 +554,7 @@
   .active-badge {
     font-size: 10.5px;
     font-weight: 700;
-    background: var(--green, #10b981);
+    background: var(--green);
     color: #fff;
     padding: 3px 10px;
     border-radius: 12px;
@@ -566,7 +567,7 @@
     padding: var(--padding) calc(var(--padding) * 1.5);
     background: var(--button);
     border-radius: var(--border-radius);
-    border: 1px dashed var(--input-border);
+    border: none;
   }
 
   .empty-title {
@@ -677,7 +678,7 @@
   .input {
     padding: 7px 10px;
     background: var(--button-elevated);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     color: var(--secondary);
     font-family: inherit;
@@ -724,7 +725,7 @@
   .ghost-btn {
     padding: 6px 10px;
     background: transparent;
-    border: 1px solid var(--input-border);
+    border: none;
     color: var(--gray);
     border-radius: var(--border-radius);
     font-family: inherit;

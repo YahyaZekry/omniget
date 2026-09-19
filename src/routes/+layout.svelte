@@ -9,13 +9,14 @@
   import { listen } from "@tauri-apps/api/event";
   import { initDownloadListener } from "$lib/stores/download-listener";
   import { getCounts } from "$lib/stores/download-store.svelte";
-  import { getSettings } from "$lib/stores/settings-store.svelte";
+  import { getSettings, loadSettings } from "$lib/stores/settings-store.svelte";
   import { queueExternalPrefill, type ExternalUrlEvent } from "$lib/stores/external-url-store.svelte";
   import Toast from "$components/toast/Toast.svelte";
   import AppSidebar from "$components/shell/AppSidebar.svelte";
   import AppToolbar from "$components/shell/AppToolbar.svelte";
   import CommandPalette from "$components/shell/CommandPalette.svelte";
   import { setCommandPaletteItems } from "$lib/stores/command-palette-store.svelte";
+  import { accountPaletteItems, activateAccount, getAccounts } from "$lib/stores/llm-accounts-store.svelte";
   import { refreshUpdateInfo } from "$lib/stores/update-store.svelte";
   import { startClipboardMonitor, stopClipboardMonitor, onClipboardUrl } from "$lib/stores/clipboard-monitor";
   import { readText } from "@tauri-apps/plugin-clipboard-manager";
@@ -23,10 +24,10 @@
   import { needsOnboarding } from "$lib/stores/onboarding-store.svelte";
   import { isYtdlpAvailable, isDepsChecked, refreshYtdlpStatus } from "$lib/stores/dependency-store.svelte";
   import { showToast } from "$lib/stores/toast-store.svelte";
-  import { ensureTrackerNotifications } from "$lib/tracker-notifications.svelte";
-  import { t, locale } from "$lib/i18n";
+  import { t, locale, isRtlLocale } from "$lib/i18n";
   import { get } from "svelte/store";
-  import { CORE_NAV_ITEMS, type NavItem } from "$lib/nav-config";
+  import { CORE_NAV_ITEMS, pluginIconForRoute, type NavItem } from "$lib/nav-config";
+  import { TOOLS, toolHref } from "$lib/tools/catalog";
   import {
     STUDY_FOCUS_ENABLED,
     STUDY_PROGRESS_ENABLED,
@@ -39,12 +40,19 @@
   let pluginNavItems = $state<NavItem[]>([]);
 
   let leagueNavItems = $derived<NavItem[]>(
-    getSettings()?.league?.enabled
+    (getSettings()?.league?.enabled ?? true)
       ? [{ href: "/league", labelKey: "league.nav", icon: "league", group: "app", order: 45 }]
       : []
   );
 
-  let allNav = $derived([...CORE_NAV_ITEMS, ...leagueNavItems, ...pluginNavItems].sort((a, b) => (a.order ?? 50) - (b.order ?? 50)));
+  let coreNavItems = $derived(
+    CORE_NAV_ITEMS.filter(
+      (item) =>
+        item.href !== "/world" || (getSettings()?.world?.enabled ?? true),
+    )
+  );
+
+  let allNav = $derived([...coreNavItems, ...leagueNavItems, ...pluginNavItems].sort((a, b) => (a.order ?? 50) - (b.order ?? 50)));
   let primaryNav = $derived(allNav.filter((item) => item.group === "primary"));
   let appNav = $derived(allNav.filter((item) => item.group === "app"));
   let pluginNav = $derived(allNav.filter((item) => item.group === "plugins"));
@@ -58,6 +66,12 @@
   let settings = $derived(getSettings());
 
   let isStudyRoute = $derived(page.url.pathname.startsWith("/study"));
+  let isStreamPopout = false;
+  // The pet window is a bare 200x200 transparent canvas: no shell around it.
+  let isPetWindow = $derived(page.url.pathname === "/pet");
+  // Same for the limits strip: the window is exactly as big as what it draws.
+  let isLimitsStrip = $derived(page.url.pathname === "/limits-strip");
+  let hideAppSidebar = false;
   let isCoreRoute = $derived(
     page.url.pathname === "/" ||
     page.url.pathname.startsWith("/downloads") ||
@@ -65,6 +79,12 @@
     page.url.pathname.startsWith("/marketplace") ||
     page.url.pathname.startsWith("/league") ||
     page.url.pathname.startsWith("/about"),
+  );
+
+  let isFlushRoute = $derived(
+    page.url.pathname === "/" ||
+    page.url.pathname.startsWith("/downloads") ||
+    page.url.pathname.startsWith("/settings"),
   );
 
   let DebugPanel = $state<any>(null);
@@ -101,11 +121,12 @@
             if (n.route === "/study/progress" && !STUDY_PROGRESS_ENABLED) continue;
             if (n.route === "/study/achievements" && !STUDY_ACHIEVEMENTS_ENABLED) continue;
             if (n.route === "/study/notes" && !STUDY_NOTES_ENABLED) continue;
+            const icon = pluginIconForRoute(n.route);
             items.push({
               href: n.route,
               label: n.label[get(locale)] || n.label["en"] || p.id,
-              icon: "plugin",
-              iconSvg: n.icon_svg || undefined,
+              icon,
+              iconSvg: icon === "plugin" ? n.icon_svg || undefined : undefined,
               group: "plugins",
               pluginId: p.id,
               order: n.order,
@@ -120,6 +141,20 @@
 
   onMount(() => {
     initDownloadListener();
+    // If `get_settings` failed while the shell was booting, the sidebar has no
+    // League entry and Settings spins forever. Retry a few times instead of
+    // leaving the app half-configured until the next restart.
+    if (!getSettings()) {
+      let attempts = 0;
+      const retry = () => {
+        if (getSettings() || attempts >= 5) return;
+        attempts += 1;
+        loadSettings()
+          .then(() => reloadPluginNav())
+          .catch(() => setTimeout(retry, 1000 * attempts));
+      };
+      setTimeout(retry, 500);
+    }
 
     if (import.meta.env.DEV) {
       import("$components/debug/DebugPanel.svelte").then((m) => {
@@ -149,7 +184,6 @@
     refreshYtdlpStatus();
     refreshUpdateInfo();
     initChangelog();
-    ensureTrackerNotifications();
     reloadPluginNav();
 
     let unlistenExternalUrl: (() => void) | null = null;
@@ -196,6 +230,33 @@
         keywords: "preferences options config",
         action: () => goto("/settings"),
       },
+      {
+        id: "nav-tools",
+        label: get(t)("nav.tools"),
+        group: get(t)("command_palette.group_nav"),
+        keywords: "ferramentas tools utilities apps",
+        action: () => goto("/tools"),
+      },
+      // Cada ferramenta do catálogo entra na paleta com as mesmas
+      // palavras-chave da busca do hub, então ⌘K acha "instagram" também.
+      ...TOOLS.map((tool) => ({
+        id: `tool-${tool.id}`,
+        label: get(t)(`tools.catalog.${tool.id}.name`),
+        group: get(t)("tools.hub.title"),
+        keywords: [...tool.keywords, get(t)(`tools.categories.${tool.category}.name`)].join(" "),
+        action: () => goto(toolHref(tool)),
+      })),
+      // Contas & cota: ⌘K troca a assinatura do CLI sem abrir a aba. Lê só o
+      // estado já carregado, então não há IPC no boot.
+      ...accountPaletteItems(
+        getAccounts().accounts,
+        {
+          group: get(t)("command_palette.group_nav"),
+          switchTo: (label) => `${get(t)("llm.accounts.palette_switch")} ${label}`,
+          openTab: get(t)("llm.accounts.title"),
+        },
+        { activate: (id) => void activateAccount(id), open: () => goto("/llm/accounts") },
+      ),
       {
         id: "nav-marketplace",
         label: get(t)("nav.marketplace"),
@@ -256,12 +317,12 @@
   $effect(() => {
     document.documentElement.setAttribute("data-shell", "mac");
     // O shell é o mesmo em todas as plataformas, mas os controles de janela
-    // não: o macOS põe fechar/minimizar à esquerda, Windows e Linux à direita.
-    // Sem isto o app reservava 78px à esquerda em todo mundo (espaço morto fora
-    // do macOS) e colocava os próprios botões exatamente onde o Windows desenha
-    // o botão de fechar.
+    // não: o macOS põe fechar/minimizar à esquerda (sobre a sidebar, titlebar
+    // overlay), Windows e Linux à direita. Sem data-platform o app reservava
+    // espaço morto e encostava a busca no botão de fechar.
     document.documentElement.setAttribute("data-platform", isMac() ? "macos" : "other");
-    void $locale;
+    document.documentElement.setAttribute("dir", isRtlLocale($locale) ? "rtl" : "ltr");
+    document.documentElement.setAttribute("lang", $locale || "en");
     buildCommandPaletteItems();
   });
 
@@ -287,8 +348,17 @@
   });
 </script>
 
+{#if isPetWindow || isLimitsStrip}
+  {@render children()}
+{:else if isStreamPopout}
+  <div class="stream-popout">
+    {@render children()}
+  </div>
+{:else}
 <div class="shell" data-reduce-motion={settings?.accessibility?.reduce_motion} data-reduce-transparency={settings?.accessibility?.reduce_transparency}>
-  <AppSidebar {primaryNav} {appNav} {pluginNav} {badgeLabel} />
+  {#if !hideAppSidebar}
+    <AppSidebar {primaryNav} {appNav} {pluginNav} {badgeLabel} />
+  {/if}
 
   <div class="shell-body">
     <AppToolbar />
@@ -315,20 +385,25 @@
     {/if}
 
     <main id="main-content" class="content">
-      {#if isStudyRoute}
-        <div class="study-shell">
-          {@render children()}
-        </div>
-      {:else if isCoreRoute}
-        <div class="core-shell">
-          {@render children()}
-        </div>
-      {:else}
-        {@render children()}
-      {/if}
+      <div class="mac-pane" class:mac-pane--flush={isFlushRoute}>
+        {#if isStudyRoute}
+          <div class="study-shell">
+            {@render children()}
+          </div>
+        {:else if isCoreRoute}
+          <div class="core-shell" class:core-shell--flush={isFlushRoute}>
+            {@render children()}
+          </div>
+        {:else}
+          <div class="mac-pane-scroll">
+            {@render children()}
+          </div>
+        {/if}
+      </div>
     </main>
   </div>
 </div>
+{/if}
 
 <Toast />
 <CommandPalette />
@@ -382,7 +457,6 @@
 
   .content {
     flex: 1;
-    overflow-y: auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -393,10 +467,14 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-    max-width: 1200px;
     width: 100%;
-    margin: 0 auto;
-    padding: var(--padding);
+    margin: 0;
+    overflow-y: auto;
+  }
+
+  .core-shell--flush {
+    padding: 0;
+    overflow: hidden;
   }
 
   .study-shell {
@@ -404,17 +482,28 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
+    overflow: hidden;
+  }
+
+  .stream-popout {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--bg);
   }
 
   .ytdlp-banner {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 16px;
-    background: var(--warning);
-    color: var(--on-warning, black);
-    font-size: 13px;
-    gap: 12px;
+    gap: var(--space-3);
+    margin: 0 var(--pane-inset) var(--space-2) 0;
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+    background: color-mix(in srgb, var(--warning) 16%, var(--pane-bg));
+    color: var(--text);
+    border-radius: var(--radius-lg);
+    box-shadow: inset 0 0 0 var(--hairline) color-mix(in srgb, var(--warning) 40%, transparent);
+    font-size: var(--text-base);
   }
 
   .ytdlp-banner-text {
@@ -425,17 +514,21 @@
   .ytdlp-banner-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   .ytdlp-banner-link {
-    font-size: 12px;
-    padding: 4px 10px;
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    font-size: var(--text-sm);
+    padding: 0 var(--space-3);
     border-radius: var(--radius-sm);
     background: var(--cta);
     color: var(--on-cta);
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 600;
+    box-shadow: none;
   }
 
   @media (hover: hover) {
@@ -454,19 +547,23 @@
   }
 
   .ytdlp-banner-close {
-    background: none;
-    border: none;
-    color: inherit;
-    cursor: pointer;
-    padding: 2px;
-    opacity: 0.7;
     display: flex;
     align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
   }
 
   @media (hover: hover) {
     .ytdlp-banner-close:hover {
-      opacity: 1;
+      background: var(--fill-2);
+      color: var(--text);
     }
   }
 </style>

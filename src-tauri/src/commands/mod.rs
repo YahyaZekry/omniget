@@ -12,9 +12,13 @@ pub mod downloads;
 pub mod host_queue;
 pub mod integration;
 pub mod league;
+pub mod llm;
 pub mod media_history;
+pub mod omnidisc;
 pub mod p2p;
+pub mod pet;
 pub mod plugins;
+pub mod profile;
 pub mod reencode;
 pub mod rpc;
 pub mod rules;
@@ -23,9 +27,15 @@ pub mod smart_speed;
 pub mod subtitle_ws;
 pub mod torrent_playback;
 pub mod video_ops;
+pub mod world;
+pub mod world_bench;
 pub mod yt_templates;
 
 #[cfg(not(target_os = "android"))]
 pub mod dependencies;
 #[cfg(not(target_os = "android"))]
 pub mod search;
+#[cfg(not(target_os = "android"))]
+pub mod spicetify;
+#[cfg(not(target_os = "android"))]
+pub mod tools;

@@ -171,11 +171,14 @@
 		  <option value="ru">{$t('settings.appearance.lang_ru')}</option>
           <option value="pt">{$t('settings.appearance.lang_pt')}</option>
           <option value="zh">{$t('settings.appearance.lang_zh')}</option>
+          <option value="zh-TW">{$t('settings.appearance.lang_zh_tw')}</option>
           <option value="ja">{$t('settings.appearance.lang_ja')}</option>
           <option value="it">{$t('settings.appearance.lang_it')}</option>
           <option value="fr">{$t('settings.appearance.lang_fr')}</option>
           <option value="es">{$t('settings.appearance.lang_es')}</option>
           <option value="el">{$t('settings.appearance.lang_el')}</option>
+          <option value="fa">{$t('settings.appearance.lang_fa')}</option>
+          <option value="lo">{$t('settings.appearance.lang_lo')}</option>
         </select>
       </div>
     </div>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+import { t } from "$lib/i18n";
   import CreatePageDialog from "../CreatePageDialog.svelte";
   import NbNotebookCreateDialog from "./NbNotebookCreateDialog.svelte";
   import NbNotebookCoverDialog from "./NbNotebookCoverDialog.svelte";
@@ -166,12 +167,12 @@
     const nb = notebooksStore.byId(notebookId);
     if (!nb) return;
     if (nb.id === 1) {
-      window.alert("Notebook 'Pessoal' não pode ser excluído.");
+      window.alert($t("study.notes.files.personal_locked"));
       return;
     }
     if (nb.page_count > 0) {
       const ok = window.confirm(
-        `Excluir "${nb.name}" remove ${nb.page_count} página${nb.page_count === 1 ? "" : "s"} para sempre. Continuar?`,
+        $t("study.notes.files.delete_confirm", { name: nb.name, n: nb.page_count }),
       );
       if (!ok) return;
       const r = await notebooksStore.delete(notebookId, true);
@@ -207,7 +208,7 @@
   async function pickIcon(notebookId: number) {
     closeContext();
     const icon = window.prompt(
-      "Ícone (lucide name, ex: book, briefcase). Vazio = sem ícone.",
+      $t("study.notes.files.icon_hint"),
       notebooksStore.byId(notebookId)?.icon_lucide ?? "",
     );
     if (icon == null) return;
@@ -272,7 +273,7 @@
 
   <input
     class="search"
-    placeholder="Filtrar páginas…"
+    placeholder={$t("study.notes.files.filter_pages")}
     bind:value={search}
   />
 
@@ -329,9 +330,9 @@
                 type="button"
                 class="page-row add-page"
                 onclick={() => startCreatePage(nb.id)}
-                title="Nova página neste notebook"
+                title={$t("study.notes.files.new_page_here")}
               >
-                <span class="page-name">+ Nova página</span>
+                <span class="page-name">{$t("study.notes.files.new_page")}</span>
               </button>
             </li>
           </ul>
@@ -414,7 +415,7 @@
         Cor…
       </button>
       <button class="ctx-item" onclick={() => void pickIcon(nb.id)}>
-        Ícone…
+        {$t("study.notes.files.pick_icon")}
       </button>
       <hr />
       {#if nb.closed}
@@ -535,7 +536,7 @@
   }
   .search {
     padding: 6px 9px;
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: 6px;
     background: var(--bg);
     color: var(--text);
@@ -667,7 +668,7 @@
   }
   .closed-section {
     margin-top: 8px;
-    border-top: 1px dashed color-mix(in oklab, var(--content-border) 40%, transparent);
+    border-top: none;
     padding-top: 6px;
   }
   .closed-toggle {
@@ -718,7 +719,7 @@
     color: var(--text);
   }
   .dock-foot {
-    border-top: 1px solid color-mix(in oklab, var(--content-border) 40%, transparent);
+    border-top: none;
     padding-top: 6px;
   }
   .new-nb {
@@ -727,7 +728,7 @@
     gap: 6px;
     width: 100%;
     padding: 6px 8px;
-    border: 1px dashed color-mix(in oklab, var(--content-border) 60%, transparent);
+    border: none;
     border-radius: 6px;
     background: transparent;
     color: var(--tertiary);
@@ -746,7 +747,7 @@
     z-index: 220;
     min-width: 180px;
     background: var(--bg);
-    border: 1px solid color-mix(in oklab, var(--content-border) 70%, transparent);
+    border: none;
     border-radius: 8px;
     padding: 4px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.34);
@@ -756,7 +757,7 @@
   }
   .ctx-menu hr {
     border: 0;
-    border-top: 1px solid color-mix(in oklab, var(--content-border) 50%, transparent);
+    border-top: none;
     margin: 3px 0;
   }
   .ctx-item {
@@ -786,7 +787,7 @@
   }
   .rename-card {
     background: var(--bg);
-    border: 1px solid color-mix(in oklab, var(--content-border) 70%, transparent);
+    border: none;
     border-radius: 10px;
     padding: 14px;
     width: min(360px, 90vw);
@@ -805,7 +806,7 @@
   }
   .rename-card input {
     padding: 7px 9px;
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: 6px;
     background: var(--bg);
     color: var(--text);
@@ -840,6 +841,6 @@
   }
   .btn.primary {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
   }
 </style>

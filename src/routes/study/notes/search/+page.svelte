@@ -2,6 +2,7 @@
   import { onMount, tick } from "svelte";
   import { goto } from "$app/navigation";
   import { page as routePage } from "$app/stores";
+  import { t } from "$lib/i18n";
   import { pluginInvoke } from "$lib/plugin-invoke";
 
   type SearchHit = {
@@ -84,7 +85,7 @@
         "study",
         "study:notes:search:rebuild",
       );
-      showToast("ok", `Index reconstruída — ${r.indexed} blocos`);
+      showToast("ok", $t("study.notes.index_rebuilt", { n: r.indexed }));
     } catch (e) {
       showToast("err", e instanceof Error ? e.message : String(e));
     }
@@ -112,9 +113,9 @@
 <section class="search-page">
   <header class="head">
     <a href="/study/notes" class="back">← Notas</a>
-    <h1>Buscar em notas</h1>
+    <h1>{$t("study.notes.search.title")}</h1>
     <p class="hint">
-      Busca FTS5 (full-text) sobre conteúdo dos blocos. Suporta operadores
+      {$t("study.notes.search.fts_intro")}
       <code>palavra*</code>, <code>"frase exata"</code>,
       <code>palavra1 OR palavra2</code>.
     </p>
@@ -132,7 +133,7 @@
     {:else if query}
       <button class="btn ghost sm" onclick={() => (query = "")}>×</button>
     {/if}
-    <button class="btn ghost sm" onclick={rebuildIndex} title="Reconstruir índice FTS">
+    <button class="btn ghost sm" onclick={rebuildIndex} title={$t("study.notes.rebuild_fts")}>
       ⟳
     </button>
   </div>
@@ -147,8 +148,8 @@
     <div class="empty-state">
       <h2>Comece a digitar</h2>
       <p>
-        Pesquise por blocos e páginas. Use <code>*</code> para wildcards e
-        <code>"frase"</code> para busca exata.
+        {$t("study.notes.search.start_a")} <code>*</code> {$t("study.notes.search.start_b")}
+        <code>"frase"</code> {$t("study.notes.search.start_c")}
       </p>
     </div>
   {:else}
@@ -156,7 +157,7 @@
       {#if pageHits.length > 0}
         <section>
           <h2>
-            Páginas
+            {$t("study.notes.search.pages")}
             <span class="count">{pageHits.length}</span>
           </h2>
           <ul>
@@ -251,7 +252,7 @@
     align-items: center;
     padding: 8px;
     background: var(--surface);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
   }
   .search-bar input {
@@ -309,7 +310,7 @@
     flex-direction: column;
     gap: 4px;
     padding: 12px 14px;
-    border: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border: none;
     border-radius: var(--border-radius);
     background: var(--surface);
     color: var(--text);

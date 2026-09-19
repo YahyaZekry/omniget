@@ -1,47 +1,86 @@
 <script lang="ts">
-  let { icon, iconSvg, size = 18 }: { icon: string; iconSvg?: string; size?: number } = $props();
+  /**
+   * Sidebar icon tile in the macOS System Settings idiom: a small rounded
+   * square with a colour of its own and a chunky white glyph (Phosphor Fill,
+   * MIT, shipped in static/icons). Plugins that provide their own SVG path
+   * still get a tile; the path is drawn white inside it.
+   */
+  let {
+    icon,
+    iconSvg,
+    size = 22,
+    active = false,
+  }: { icon: string; iconSvg?: string; size?: number; active?: boolean } = $props();
+
+  // glyph file + tile gradient per nav id. Colours follow Apple's system
+  // palette so the column reads like a native sidebar.
+  const TILES: Record<string, { glyph: string; from: string; to: string }> = {
+    home: { glyph: "house", from: "#5AA9FF", to: "#1E6FE8" },
+    downloads: { glyph: "tray-arrow-down", from: "#FFB340", to: "#F28500" },
+    chat: { glyph: "chats-circle", from: "#4CD964", to: "#2AA845" },
+    llm: { glyph: "sparkle", from: "#C77DFF", to: "#7B3FE4" },
+    world: { glyph: "globe-hemisphere-west", from: "#67D27E", to: "#2F9E52" },
+    marketplace: { glyph: "storefront", from: "#6E8CFF", to: "#3D5BF0" },
+    settings: { glyph: "gear-six", from: "#A3A3A8", to: "#6F6F75" },
+    about: { glyph: "info", from: "#5AA9FF", to: "#1E6FE8" },
+    league: { glyph: "sword", from: "#E8B84A", to: "#B8860B" },
+    courses: { glyph: "graduation-cap", from: "#C77DFF", to: "#8E3FD8" },
+    study: { glyph: "book-open-text", from: "#48CFDF", to: "#1A9EB5" },
+    telegram: { glyph: "paper-plane-tilt", from: "#55C2FF", to: "#1F8FE0" },
+    convert: { glyph: "arrows-clockwise", from: "#FF7A7A", to: "#E33A3A" },
+    misc: { glyph: "wrench", from: "#9B9BA3", to: "#63636B" },
+    tools: { glyph: "toolbox", from: "#FF9F5A", to: "#E8641A" },
+    music: { glyph: "music-notes", from: "#FF5E7A", to: "#E0203F" },
+    library: { glyph: "books", from: "#D8A15C", to: "#A66A24" },
+    read: { glyph: "book-open-text", from: "#FFA05C", to: "#E06A1A" },
+    plugin: { glyph: "puzzle-piece", from: "#8E8E93", to: "#5C5C60" },
+  };
+
+  let tile = $derived(TILES[icon] ?? TILES.plugin);
+  let glyphSize = $derived(Math.round(size * 0.64));
 </script>
 
-<svg
-  viewBox="0 0 24 24"
-  width={size}
-  height={size}
-  fill="none"
-  stroke="currentColor"
-  stroke-width="1.8"
-  stroke-linecap="round"
-  stroke-linejoin="round"
+<span
+  class="nav-icon nav-tile"
+  class:nav-icon-active={active}
+  style:--tile-from={tile.from}
+  style:--tile-to={tile.to}
+  style:--tile-size="{size}px"
   aria-hidden="true"
 >
   {#if iconSvg}
-    {#each iconSvg.split(" M").map((d, i) => (i === 0 ? d : "M" + d)) as pathD}
-      <path d={pathD} />
-    {/each}
-  {:else if icon === "home"}
-    <path d="M3 12L12 3l9 9" />
-    <path d="M5 10v9a1 1 0 001 1h3v-5h6v5h3a1 1 0 001-1v-9" />
-  {:else if icon === "downloads"}
-    <path d="M12 3v12m0 0l-4-4m4 4l4-4" />
-    <path d="M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2" />
-  {:else if icon === "marketplace"}
-    <path d="M3 21h18" />
-    <path d="M3 7v1a3 3 0 0 0 6 0V7" />
-    <path d="M9 7v1a3 3 0 0 0 6 0V7" />
-    <path d="M15 7v1a3 3 0 0 0 6 0V7" />
-    <path d="M3 7h18l-1.5-4H4.5z" />
-    <path d="M5 21V10" />
-    <path d="M19 21V10" />
-  {:else if icon === "settings"}
-    <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-    <circle cx="12" cy="12" r="3" />
-  {:else if icon === "league"}
-    <path d="M6 14L17 3h4v4L10 18" />
-    <path d="M3 21l5-5" />
-    <path d="M5 14l5 5" />
-  {:else if icon === "about"}
-    <circle cx="12" cy="12" r="10" />
-    <path d="M12 16v-4m0-4h.01" />
+    <svg viewBox="0 0 24 24" width={glyphSize} height={glyphSize} fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      {#each iconSvg.split(" M").map((d, i) => (i === 0 ? d : "M" + d)) as pathD}
+        <path d={pathD} />
+      {/each}
+    </svg>
   {:else}
-    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+    <span class="nav-glyph" style:--glyph="url(/icons/{tile.glyph}.svg)" style:width="{glyphSize}px" style:height="{glyphSize}px"></span>
   {/if}
-</svg>
+</span>
+
+<style>
+  .nav-tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--tile-size);
+    height: var(--tile-size);
+    flex-shrink: 0;
+    border-radius: calc(var(--tile-size) * 0.28);
+    background: linear-gradient(180deg, var(--tile-from), var(--tile-to));
+    box-shadow:
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.25),
+      inset 0 -1px 1px rgba(0, 0, 0, 0.12),
+      0 0.5px 1px rgba(0, 0, 0, 0.25);
+    color: #fff;
+  }
+
+  .nav-glyph {
+    display: block;
+    background: #fff;
+    -webkit-mask: var(--glyph) center / contain no-repeat;
+    mask: var(--glyph) center / contain no-repeat;
+    filter: drop-shadow(0 0.5px 0 rgba(0, 0, 0, 0.18));
+  }
+</style>

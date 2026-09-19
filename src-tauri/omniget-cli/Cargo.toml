@@ -2,7 +2,7 @@
 name = "omniget-cli"
 version = "0.1.0"
 edition = "2021"
-description = "CLI for Omniget media downloader"
+description = "OmniGet command line: download from YouTube, Instagram, X and 1,800+ sites, and run AI agent jobs and loops"
 
 [dependencies]
 omniget-core = { path = "../omniget-core" }
@@ -16,6 +16,7 @@ anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 directories = "6"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 [profile.release]
 lto = "thin"

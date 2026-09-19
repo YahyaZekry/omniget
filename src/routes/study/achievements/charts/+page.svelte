@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { t } from "$lib/i18n";
   import { pluginInvoke } from "$lib/plugin-invoke";
   import PageHero from "$lib/study-components/PageHero.svelte";
   import SegmentedControl from "$lib/study-components/SegmentedControl.svelte";
@@ -31,13 +32,13 @@
   let xpState = $state<GamificationState | null>(null);
   let period = $state("30");
 
-  const periodOptions = [
+  const periodOptions = $derived([
     { value: "7", label: "7d" },
     { value: "30", label: "30d" },
     { value: "90", label: "90d" },
-    { value: "365", label: "1a" },
-    { value: "all", label: "Todos" },
-  ];
+    { value: "365", label: $t("study.achv.charts.p_1y") },
+    { value: "all", label: $t("study.anki.stats.p_all") },
+  ]);
 
   function periodCutoff(p: string): number | null {
     if (p === "all") return null;
@@ -256,18 +257,18 @@
 
 <section class="charts-page">
   <PageHero
-    title="Charts de progressão"
-    subtitle="XP, levels, streak, unlocks ao longo do tempo"
+    title={$t("study.achv.charts.title")}
+    subtitle={$t("study.achv.charts.subtitle")}
   />
 
   <div class="period-bar">
     <SegmentedControl
       options={periodOptions}
       bind:value={period}
-      ariaLabel="Período"
+      ariaLabel={$t("study.anki.stats.period_aria")}
     />
     <button class="back-btn" onclick={() => history.back()}>
-      ← Voltar
+      {$t("study.common.go_home")}
     </button>
   </div>
 
@@ -277,7 +278,7 @@
     <div class="state err">{error}</div>
   {:else if entries.length === 0}
     <div class="empty">
-      <p>Sem histórico de XP no período selecionado.</p>
+      <p>{$t("study.achv.charts.no_xp_history")}</p>
       <p class="muted">Estude um pouco e volte aqui pra ver charts.</p>
     </div>
   {:else}
@@ -340,7 +341,7 @@
         <header class="card-head">
           <h3>Level ao longo do tempo</h3>
           <span class="meta">
-            {levelPlot.count} level-up{levelPlot.count === 1 ? "" : "s"} no período
+            {$t("study.achv.charts.level_ups", { n: levelPlot.count })}
           </span>
         </header>
         {#if levelPlot.points.length > 0}
@@ -383,7 +384,7 @@
             </p>
           {/if}
         {:else}
-          <p class="muted small">Nenhum level-up no período</p>
+          <p class="muted small">{$t("study.achv.charts.no_levelups")}</p>
         {/if}
       </article>
 
@@ -432,7 +433,7 @@
         <header class="card-head">
           <h3>Unlocks por dia</h3>
           <span class="meta">
-            {filteredAchievements.length} unlock{filteredAchievements.length === 1 ? "" : "s"} no período
+            {$t("study.achv.charts.unlocks", { n: filteredAchievements.length })}
           </span>
         </header>
         {#if unlocksPlot.points.length > 0}
@@ -479,7 +480,7 @@
             </p>
           {/if}
         {:else}
-          <p class="muted small">Nenhum unlock no período</p>
+          <p class="muted small">{$t("study.achv.charts.no_unlocks")}</p>
         {/if}
       </article>
     </div>
@@ -504,7 +505,7 @@
   }
   .back-btn {
     background: transparent;
-    border: 1px solid var(--input-border);
+    border: none;
     color: var(--text);
     padding: 6px 12px;
     border-radius: var(--border-radius);
@@ -528,8 +529,7 @@
   .empty {
     padding: calc(var(--padding) * 3) var(--padding);
     text-align: center;
-    border: 1px dashed
-      color-mix(in oklab, var(--input-border) 70%, transparent);
+    border: none;
     border-radius: var(--border-radius);
     background: color-mix(in oklab, var(--accent) 3%, transparent);
   }
@@ -559,7 +559,7 @@
 
   .card {
     background: var(--surface);
-    border: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border: none;
     border-radius: var(--border-radius);
     padding: calc(var(--padding) * 0.9);
     display: flex;

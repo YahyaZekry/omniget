@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tabsStore } from "$lib/study-notes/tabs-store.svelte";
+import { t } from "$lib/i18n";
   import {
     notesPagesList,
     notesPagesEnsure,
@@ -231,7 +232,7 @@
         <button
           type="button"
           class="close"
-          aria-label="Fechar tab"
+          aria-label={$t("study.notes.nb.close_tab")}
           onclick={(e) => closeTab(e, tab.id)}
         >
           ×
@@ -244,8 +245,8 @@
     class="add"
     type="button"
     onclick={openPicker}
-    aria-label="Nova tab"
-    title="Nova tab (Ctrl+T)"
+    aria-label={$t("study.notes.nb.new_tab")}
+    title={$t("study.notes.nb.new_tab_shortcut")}
   >
     +
   </button>
@@ -263,13 +264,13 @@
     }}
     role="presentation"
   >
-    <div class="picker" role="dialog" aria-label="Abrir página em nova tab">
+    <div class="picker" role="dialog" aria-label={$t("study.notes.nb.open_new_tab")}>
       <input
         bind:this={pickerInputEl}
         bind:value={pickerQuery}
         onkeydown={onPickerKey}
         type="text"
-        placeholder="Buscar ou criar página…"
+        placeholder={$t("study.notes.nb.search_or_create")}
         class="picker-input"
       />
       <div class="picker-list">
@@ -344,7 +345,7 @@
     gap: 6px;
     padding: 0 6px 0 10px;
     height: 100%;
-    border-right: 1px solid color-mix(in oklab, var(--content-border) 30%, transparent);
+    border-right: none;
     font-size: 12px;
     color: var(--secondary, var(--text));
     cursor: pointer;
@@ -426,7 +427,7 @@
     width: min(520px, 92vw);
     max-height: 60vh;
     background: var(--secondary-bg, var(--page-bg));
-    border: 1px solid color-mix(in oklab, var(--content-border) 60%, transparent);
+    border: none;
     border-radius: 8px;
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
     display: flex;
@@ -435,7 +436,7 @@
   .picker-input {
     background: transparent;
     border: 0;
-    border-bottom: 1px solid color-mix(in oklab, var(--content-border) 50%, transparent);
+    border-bottom: none;
     padding: 12px 16px;
     color: var(--text);
     font-size: 14px;

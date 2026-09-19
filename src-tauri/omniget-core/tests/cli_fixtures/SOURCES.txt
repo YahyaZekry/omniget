@@ -1,0 +1,86 @@
+cli_fixtures — where each line came from (f4-cli-runtime, 18/09/2026)
+====================================================================
+
+The rule: a fixture is either RECORDED (real bytes from a real process on this
+machine) or RECONSTRUCTED (built from an official schema). Every file says
+which, and a reconstructed file names the schema it was built from.
+
+Nothing here was produced by pointing a CLI at the owner's real config
+directory, and no credential file was opened to make any of it.
+
+
+claude-2.1.276-not-logged-in.jsonl          RECORDED (real)
+----------------------------------------------------------
+Command, run on macOS 25.5.0 (darwin) on 18/09/2026:
+
+  env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u CLAUDE_CODE_OAUTH_TOKEN \
+      CLAUDE_CONFIG_DIR="$TMP/cfg" HOME="$TMP/fakehome" \
+      claude -p "responda ok" --output-format stream-json --verbose
+
+`claude --version` = `2.1.276 (Claude Code)`. `$TMP/cfg` was created empty
+seconds before, so the CLI had nowhere to find a login; exit code 1, stderr
+empty, the three stdout lines are byte-for-byte what the CLI wrote. This is the
+`ERR_CLI_AUTH` fixture: the `assistant` line carries
+`"error":"authentication_failed"` with `is_api_error_message":true`, and the
+`result` line carries `is_error":true` with `terminal_reason":"api_error"`.
+
+
+claude-2.1.276-hello.jsonl                  RECONSTRUCTED
+claude-2.1.276-tool-use.jsonl               RECONSTRUCTED
+claude-2.1.276-rate-limit.jsonl             RECONSTRUCTED
+--------------------------------------------------------
+An authenticated stream could only be recorded by logging a real Claude
+subscription into a directory this agent controls, which the round forbids (and
+which would mean generating billed traffic on the owner's account). These three
+were written from the published schemas instead:
+
+  * message envelope, `system/init`, `assistant`, `user`, `result`
+    (both the `success` arm with `result` and the error arm with `errors[]`):
+    https://code.claude.com/docs/en/agent-sdk/typescript  (SDKSystemMessage,
+    SDKAssistantMessage, SDKResultMessage) and
+    https://code.claude.com/docs/en/headless
+  * `stream_event` payloads (`message_start`, `content_block_start`,
+    `content_block_delta` with `text_delta` / `thinking_delta` /
+    `signature_delta` / `input_json_delta`, `content_block_stop`,
+    `message_delta`, `message_stop`): the inner objects are copied verbatim
+    from https://platform.claude.com/docs/en/build-with-claude/streaming and
+    wrapped in the documented `{"type":"stream_event","event":…}` envelope.
+  * `rate_limit_event`: the documented `SDKRateLimitEvent` shape is FLAT —
+    `rate_limit_info: { status, resetsAt?, utilization?, errorCode? }` — with
+    no per-window breakdown (same URL as above). `estudos/74` §A.2 records a
+    different shape observed live on 2.1.275:
+    `unifiedWindows.{five_hour,seven_day}.{utilization, resetsAt}`.
+    The fixture carries BOTH so the parser is tested against both; neither
+    source states the range of `utilization`, so the parser decides by value
+    (above 1.0 it can only be a percentage). See the open issue in the handoff.
+  * the usage-limit wording (`You've hit your session limit · resets 3:45pm`)
+    is verbatim from https://code.claude.com/docs/en/errors.
+
+Token counts, costs, durations, ids and uuids in these three files are made up.
+They are consistent inside each file and nothing reads them as truth outside
+the assertions in `claude.rs`.
+
+
+codex-0.5x-hello.jsonl                      RECONSTRUCTED
+codex-0.5x-tools.jsonl                      RECONSTRUCTED
+codex-0.5x-failed.jsonl                     RECONSTRUCTED
+--------------------------------------------------------
+`which codex` was empty on this machine on 18/09/2026, so nothing could be
+recorded. Built from:
+
+  * https://github.com/openai/codex/blob/main/codex-rs/exec/src/exec_events.rs
+    — the serde definitions that literally produce the JSONL: top level is
+    `#[serde(tag = "type")]` over `thread.started`, `turn.started`,
+    `turn.completed`, `turn.failed`, `item.started|updated|completed`, `error`;
+    a `ThreadItem` flattens its own `type` beside `id`; `Usage` is
+    `{input_tokens, cached_input_tokens, cache_write_input_tokens,
+    output_tokens, reasoning_output_tokens}`.
+  * https://learn.chatgpt.com/docs/non-interactive-mode — the sample stream.
+    The five lines of `codex-0.5x-hello.jsonl` are that sample, verbatim,
+    with one `item.completed` for the command added and the `usage` line
+    completed with the `cache_write_input_tokens` field that the serde
+    definition always serialises and the doc sample omits.
+
+When Codex is installed, re-record all three with
+`codex exec --json --skip-git-repo-check -` under a temporary `CODEX_HOME`,
+and drop this note.

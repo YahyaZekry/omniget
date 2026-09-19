@@ -61,3 +61,26 @@ pub fn std_command<S: AsRef<std::ffi::OsStr>>(program: S) -> std::process::Comma
     cmd.env("PYTHONLEGACYWINDOWSSTDIO", "0");
     cmd
 }
+
+/// `ETXTBSY`: on Linux a file that was just written cannot be executed while
+/// any process still holds it open for writing, and a `fork` on another thread
+/// keeps that descriptor alive until its own `exec`. The window is a few
+/// milliseconds; a launcher script written and started in the same breath
+/// (ours, or a test's fake CLI) lands in it now and then.
+pub fn is_text_file_busy(err: &std::io::Error) -> bool {
+    cfg!(unix) && err.raw_os_error() == Some(26)
+}
+
+/// Runs `spawn`, trying again for a moment when the program is "text file busy".
+pub fn spawn_retrying_busy<T>(mut spawn: impl FnMut() -> std::io::Result<T>) -> std::io::Result<T> {
+    let mut tries = 0;
+    loop {
+        match spawn() {
+            Err(e) if is_text_file_busy(&e) && tries < 20 => {
+                tries += 1;
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            other => return other,
+        }
+    }
+}

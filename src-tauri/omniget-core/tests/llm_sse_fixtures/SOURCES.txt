@@ -1,0 +1,37 @@
+SSE fixtures for core/llm/sse.rs and core/llm/providers/*.
+Recorded or written on 2026-09-18 by the f2-llm-providers agent.
+No API key, token or account id appears in any file here.
+
+REAL (recorded with curl -N against a live server)
+  ollama_v1_chat.txt      POST http://localhost:11434/v1/chat/completions
+                          ollama 0.x, model qwen3:0.6b, stream + stream_options.include_usage.
+                          Carries the "reasoning" delta field Ollama adds for thinking models.
+  ollama_api_chat.ndjson  POST http://localhost:11434/api/chat, "think": false.
+                          Newline-delimited JSON, not SSE.
+
+SYNTHETIC (no key was available on this machine; bodies written by hand from the
+providers' official streaming documentation and kept byte-shaped like the real
+thing: chunked tool arguments, usage-only last chunk, comment lines, CRLF).
+Replace any of these with a curl -N recording as soon as a key exists.
+  openai_chat_text.txt       OpenAI chat/completions, text + final usage chunk.
+  openai_tool_call.txt       OpenAI tool call with arguments split over 4 deltas.
+  openrouter_reasoning.txt   OpenRouter: "reasoning" deltas, "cost" in usage,
+                             ": OPENROUTER PROCESSING" comment line, CRLF terminators.
+                             The usage rides the FINAL chunk, which still carries its
+                             choices entry (docs), unlike OpenAI's usage-only chunk.
+  deepseek_cache.txt         DeepSeek prompt_cache_hit_tokens / prompt_cache_miss_tokens,
+                             usage on the last chunk alongside finish_reason (docs).
+  groq_chat_text.txt         Groq, usage inside the finish chunk (x_groq).
+  anthropic_text.txt         messages stream: message_start .. message_stop, ping, cache_read.
+  anthropic_tool_use.txt     thinking_delta + signature_delta + tool_use input_json_delta.
+  anthropic_error.txt        mid-stream "error" event (overloaded_error).
+  anthropic_cumulative_usage.txt
+                             message_delta.usage carrying the CUMULATIVE input_tokens,
+                             cache_creation_input_tokens and cache_read_input_tokens of a
+                             turn that ran a server-side tool, so they must override what
+                             message_start reported. Ends without a trailing blank line on
+                             purpose: SseParser::finish() has to dispatch message_stop.
+
+Two shapes of usage chunk exist in the wild and both are exercised here:
+OpenAI sends a final chunk with "choices": [] and only usage, while OpenRouter
+and DeepSeek keep the choices entry on the chunk that carries usage.

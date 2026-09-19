@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { showToast } from "$lib/stores/toast-store.svelte";
   import {
@@ -89,7 +90,7 @@
     try {
       sessions = await telegramCloneList();
     } catch (e: any) {
-      error = typeof e === "string" ? e : (e?.message ?? "Erro");
+      error = typeof e === "string" ? e : (e?.message ?? $t("study.common.error"));
     } finally {
       loading = false;
     }
@@ -111,7 +112,7 @@
   async function startClone() {
     const source = chatById(sourceId);
     if (!source) {
-      showToast("error", "Selecione uma origem");
+      showToast("error", $t("study.telegram.clone.select_origin"));
       return;
     }
     starting = true;
@@ -135,7 +136,7 @@
           drop_captions: dropCaptions,
         },
       });
-      showToast("info", `Clone iniciado: ${result.dest_title}`);
+      showToast("info", $t("study.telegram.clone.clone_started", { title: result.dest_title }));
       view = "list";
       await refreshSessions();
     } catch (e: any) {
@@ -203,11 +204,11 @@
 
   function statusLabel(status: string): string {
     switch (status) {
-      case "running": return "Em andamento";
-      case "paused": return "Pausado";
-      case "completed": return "Concluído";
-      case "error": return "Erro";
-      case "cancelled": return "Cancelado";
+      case "running": return $t("study.telegram.clone.st_running");
+      case "paused": return $t("study.telegram.clone.st_paused");
+      case "completed": return $t("study.telegram.clone.st_completed");
+      case "error": return $t("study.common.error");
+      case "cancelled": return $t("study.telegram.clone.st_cancelled");
       default: return status;
     }
   }
@@ -223,8 +224,8 @@
     <aside class="panel" role="dialog" aria-modal="true" aria-label="Clonar canais">
       <header class="panel-header">
         <div>
-          <h2>Clonar canais</h2>
-          <p class="subtitle">Copie todas as mensagens de um canal para outro via forward.</p>
+          <h2>{$t("study.telegram.clone.title")}</h2>
+          <p class="subtitle">{$t("study.telegram.clone.subtitle")}</p>
         </div>
         <button type="button" class="icon-btn" onclick={close} aria-label="Fechar">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -243,7 +244,7 @@
           aria-selected={view === "list"}
           onclick={() => (view = "list")}
         >
-          Sessões {sessions.length > 0 ? `(${sessions.length})` : ""}
+          {$t("study.telegram.clone.sessions")} {sessions.length > 0 ? `(${sessions.length})` : ""}
         </button>
         <button
           type="button"
@@ -261,9 +262,9 @@
         {#if view === "new"}
           <section class="form-section">
             <label class="field">
-              <span class="field-label">Origem</span>
+              <span class="field-label">{$t("study.telegram.clone.origin")}</span>
               <select class="input" bind:value={sourceId}>
-                <option value={null}>— Selecione um canal —</option>
+                <option value={null}>{$t("study.telegram.clone.select_channel")}</option>
                 {#each selectableChats() as c (c.id)}
                   <option value={c.id}>{c.title}</option>
                 {/each}
@@ -271,32 +272,32 @@
             </label>
 
             <fieldset class="dest-fieldset">
-              <legend class="field-label">Destino</legend>
+              <legend class="field-label">{$t("study.telegram.clone.dest")}</legend>
               <label class="radio-row">
                 <input type="radio" bind:group={destMode} value="auto" />
                 <div>
-                  <span class="radio-title">Criar novo canal</span>
-                  <span class="radio-desc">Cria automaticamente. Você fica como dono.</span>
+                  <span class="radio-title">{$t("study.telegram.clone.dest_new")}</span>
+                  <span class="radio-desc">{$t("study.telegram.clone.dest_new_desc")}</span>
                 </div>
               </label>
               {#if destMode === "auto"}
                 <input
                   type="text"
                   class="input dest-title"
-                  placeholder="Nome do novo canal (opcional)"
+                  placeholder={$t("study.telegram.clone.new_channel_name_placeholder")}
                   bind:value={destTitle}
                 />
               {/if}
               <label class="radio-row">
                 <input type="radio" bind:group={destMode} value="existing" />
                 <div>
-                  <span class="radio-title">Canal existente</span>
-                  <span class="radio-desc">Use um canal/grupo seu.</span>
+                  <span class="radio-title">{$t("study.telegram.clone.dest_existing")}</span>
+                  <span class="radio-desc">{$t("study.telegram.clone.dest_existing_desc")}</span>
                 </div>
               </label>
               {#if destMode === "existing"}
                 <select class="input dest-title" bind:value={destId}>
-                  <option value={null}>— Selecione —</option>
+                  <option value={null}>{$t("study.telegram.clone.select_none")}</option>
                   {#each selectableChats().filter((c) => c.id !== sourceId) as c (c.id)}
                     <option value={c.id}>{c.title}</option>
                   {/each}
@@ -305,7 +306,7 @@
             </fieldset>
 
             <details class="advanced">
-              <summary>Opções avançadas</summary>
+              <summary>{$t("study.telegram.clone.advanced")}</summary>
               <div class="advanced-grid">
                 <label class="field">
                   <span class="field-label">Delay entre lotes (ms)</span>
@@ -321,23 +322,23 @@
                 </label>
                 {#if limitEnabled}
                   <label class="field">
-                    <span class="field-label">Máximo de mensagens</span>
+                    <span class="field-label">{$t("study.telegram.clone.max_messages")}</span>
                     <input type="number" class="input" min="1" bind:value={limit} />
                   </label>
                 {/if}
                 <label class="checkbox-row">
                   <input type="checkbox" bind:checked={dropAuthor} />
-                  <span>Remover autor original</span>
+                  <span>{$t("study.telegram.clone.remove_author")}</span>
                 </label>
                 <label class="checkbox-row">
                   <input type="checkbox" bind:checked={dropCaptions} />
-                  <span>Remover legendas</span>
+                  <span>{$t("study.telegram.clone.remove_captions")}</span>
                 </label>
               </div>
             </details>
 
             <div class="actions">
-              <button type="button" class="button" onclick={close} disabled={starting}>Cancelar</button>
+              <button type="button" class="button" onclick={close} disabled={starting}>{$t("study.common.cancel")}</button>
               <button
                 type="button"
                 class="button primary"
@@ -356,8 +357,8 @@
               <div class="status status-error">{error}</div>
             {:else if sessions.length === 0}
               <div class="status">
-                <p>Nenhuma sessão de clone ainda.</p>
-                <button type="button" class="button primary" onclick={() => (view = "new")}>Criar nova</button>
+                <p>{$t("study.telegram.clone.no_sessions")}</p>
+                <button type="button" class="button primary" onclick={() => (view = "new")}>{$t("study.telegram.clone.create_new")}</button>
               </div>
             {:else}
               <ul class="session-list">
@@ -396,10 +397,10 @@
                         <button type="button" class="button primary" onclick={() => resumeSession(s)}>Retomar</button>
                       {/if}
                       {#if s.status === "running" || s.status === "paused"}
-                        <button type="button" class="button danger" onclick={() => cancelSession(s)}>Cancelar</button>
+                        <button type="button" class="button danger" onclick={() => cancelSession(s)}>{$t("study.common.cancel")}</button>
                       {/if}
                       {#if s.status !== "running"}
-                        <button type="button" class="button ghost" onclick={() => deleteSession(s)}>Remover</button>
+                        <button type="button" class="button ghost" onclick={() => deleteSession(s)}>{$t("study.common.delete")}</button>
                       {/if}
                     </div>
                   </li>
@@ -449,7 +450,7 @@
     align-items: flex-start;
     gap: var(--padding);
     padding: var(--padding);
-    border-bottom: 1px solid var(--input-border);
+    border-bottom: none;
   }
 
   .panel-header > div {
@@ -484,7 +485,7 @@
 
   .tabs {
     display: flex;
-    border-bottom: 1px solid var(--input-border);
+    border-bottom: none;
   }
 
   .tab {
@@ -539,7 +540,7 @@
     width: 100%;
     padding: 8px 12px;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     color: var(--secondary);
     font-family: inherit;
@@ -555,7 +556,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     padding: var(--padding);
     margin: 0;
@@ -601,7 +602,7 @@
   }
 
   .advanced {
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     padding: 8px var(--padding);
   }
@@ -634,7 +635,7 @@
     justify-content: flex-end;
     gap: 8px;
     padding-top: var(--padding);
-    border-top: 1px solid var(--input-border);
+    border-top: none;
   }
 
   .button {
@@ -675,7 +676,7 @@
   .button.ghost {
     background: transparent;
     color: var(--gray);
-    border: 1px solid var(--input-border);
+    border: none;
   }
 
   .sessions-section {
@@ -748,7 +749,7 @@
   }
 
   .status-completed {
-    background: var(--green, #10b981);
+    background: var(--green);
     color: #fff;
   }
 
@@ -759,7 +760,7 @@
   }
 
   .status-paused {
-    background: var(--gold, #f59e0b);
+    background: var(--warning);
     color: #fff;
   }
 
@@ -783,7 +784,7 @@
   }
 
   .progress-inner.status-completed {
-    background: var(--green, #10b981);
+    background: var(--green);
   }
 
   .session-meta {

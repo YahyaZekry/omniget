@@ -1,11 +1,20 @@
 import { extractCookiesForPlatform } from "./cookies.js";
 import { detectSupportedMediaUrl } from "./detect.js";
 import { createActionFeedbackController } from "./action-feedback.js";
-import { registerSnifferListeners, getMediaCount, getMediaCountForPage, getDetectedMedia, getDetectedMediaForUrl, getPageKeyForTab, restoreMedia } from "./media-sniffer.js";
+import { registerSnifferListeners, getMediaCount, getMediaCountForPage, getDetectedMedia, getDetectedMediaForUrl, getPageKeyForTab, recordDetectedMedia, restoreMedia } from "./media-sniffer.js";
 import { summarizeCookies } from "./cookie-summary.js";
 import { loadSnifferState, isSnifferEnabled, setSnifferEnabled } from "./sniffer-toggle.js";
+import {
+  loadDeepSearchState,
+  isDeepSearchEnabled,
+  isDeepSearchSupported,
+  setDeepSearchEnabled,
+  shouldSkipDeepSearch,
+} from "./deep-search-toggle.js";
+import { loadH264State, isH264Enabled, isBlock60, setH264 } from "./h264-toggle.js";
 import { registerContextMenu, getContextMenuId } from "./context-menu.js";
 import { openOmnigetScheme } from "./send-via-scheme.js";
+import { isSyntheticManifestUrl } from "./synthetic-manifest.js";
 import {
   sendViaBridge,
   sendCookiesViaBridge,
@@ -107,15 +116,15 @@ const actionFeedback = createActionFeedbackController({
   setBadgeBackgroundColor: (details) => chrome.action.setBadgeBackgroundColor(details),
 });
 
-let snifferRegistered = false;
+// Registered unconditionally, synchronously, before anything awaits: see the
+// note on registerSnifferListeners. The stored enable flag is consulted inside
+// the handlers, so a disabled sniffer costs one boolean check per request.
+registerSnifferListeners(onMediaDetected);
 
-loadSnifferState().then(async (enabled) => {
-  await restoreMedia();
-  if (enabled) {
-    registerSnifferListeners(onMediaDetected);
-    snifferRegistered = true;
-  }
-});
+loadSnifferState().catch(() => {});
+loadDeepSearchState().catch(() => {});
+loadH264State().catch(() => {});
+restoreMedia().catch(() => {});
 
 chrome.runtime.onInstalled.addListener(async (details) => {
   registerContextMenu();
@@ -243,13 +252,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  if (msg.type === "getH264") {
+    sendResponse({ enabled: isH264Enabled(), block60: isBlock60() });
+    return false;
+  }
+
+  if (msg.type === "toggleH264") {
+    setH264(msg.enabled, msg.block60).then((r) => sendResponse(r)).catch(() => sendResponse({ enabled: isH264Enabled(), block60: isBlock60() }));
+    return true;
+  }
+
   if (msg.type === "toggleSniffer") {
     setSnifferEnabled(msg.enabled).then((result) => {
       const effective = isSnifferEnabled();
-      if (effective && !snifferRegistered) {
-        registerSnifferListeners(onMediaDetected);
-        snifferRegistered = true;
-      }
       sendResponse({
         ok: result?.ok !== false,
         enabled: effective,
@@ -263,7 +278,69 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     handleSendToApp(msg).then(sendResponse);
     return true;
   }
+
+  // Deep search runs in the page and finds playlists the network layer never
+  // sees as media. The manifest text itself stays in the content script (it can
+  // be hundreds of KB); we only fetch it at send time, from the tab that has it.
+  if (msg.type === "deep-search-media") {
+    const tabId = sender?.tab?.id;
+    if (typeof tabId !== "number") return false;
+    if (shouldSkipDeepSearch(msg.pageUrl)) return false;
+    const entry = {
+      url: msg.url,
+      contentType: msg.format === "dash" ? "application/dash+xml" : "application/x-mpegurl",
+      contentLength: 0,
+      mediaType: msg.format === "dash" ? "dash" : "hls",
+      sizeText: "",
+      detectedAt: Date.now(),
+      tabId,
+      requestHeaders: [],
+      responseHeaders: [],
+      source: "deep-search",
+      hasManifest: Boolean(msg.hasManifest),
+      // Which frame holds the text: an iframe player keeps its own copy, and
+      // asking the whole tab would take whichever frame answered first.
+      frameId: typeof sender?.frameId === "number" ? sender.frameId : 0,
+    };
+    recordDetectedMedia(tabId, entry).then((recorded) => {
+      if (recorded) onMediaDetected(tabId, entry);
+    });
+    return false;
+  }
+
+  if (msg.type === "getDeepSearch") {
+    isDeepSearchSupported()
+      .then((supported) => sendResponse({ enabled: isDeepSearchEnabled(), supported }))
+      .catch(() => sendResponse({ enabled: false, supported: false }));
+    return true;
+  }
+
+  if (msg.type === "toggleDeepSearch") {
+    setDeepSearchEnabled(msg.enabled)
+      .then((result) => sendResponse({
+        ok: result?.ok !== false,
+        enabled: isDeepSearchEnabled(),
+        reason: result?.reason,
+      }))
+      .catch(() => sendResponse({ ok: false, enabled: isDeepSearchEnabled() }));
+    return true;
+  }
 });
+
+// The text lives in the deep-search bridge of the tab that captured it. A tab
+// that has since navigated away answers nothing, which is fine: the app falls
+// back to fetching the URL, and only a blob-backed playlist is truly lost.
+async function fetchManifestText(tabId, frameId, url) {
+  if (typeof tabId !== "number") return null;
+  try {
+    const options = typeof frameId === "number" ? { frameId } : undefined;
+    const response = await chrome.tabs.sendMessage(tabId, { type: "getManifestText", url }, options);
+    const text = response?.text;
+    return typeof text === "string" && text !== "" ? text : null;
+  } catch {
+    return null;
+  }
+}
 
 function onMediaDetected(tabId, _entry) {
   if (!isSnifferEnabled()) return;
@@ -348,6 +425,25 @@ async function handleSendToApp(msg) {
   if (msg.thumbnail) message.thumbnail = msg.thumbnail;
   else if (pageThumbnail) message.thumbnail = pageThumbnail;
   if (msg.mediaType) message.mediaType = msg.mediaType;
+  if (msg.hasManifest) {
+    let tabId = msg.tabId;
+    if (typeof tabId !== "number") {
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        tabId = tab?.id;
+      } catch {}
+    }
+    const manifestText = await fetchManifestText(tabId, msg.frameId, url);
+    if (manifestText) {
+      message.manifestText = manifestText;
+    } else if (isSyntheticManifestUrl(url)) {
+      // The text lived in the page and the page is gone — a reload, a closed
+      // tab, an evicted entry. A synthetic URL is an identity, not an address,
+      // so there is nothing left to download and no fallback to try. Say so
+      // instead of queueing a URL that can only fail at DNS.
+      return { ok: false, reason: "manifest_gone" };
+    }
+  }
   if (msg.contentType) message.contentType = msg.contentType;
   if (msg.headers) message.headers = msg.headers;
   if (typeof msg.openApp === "boolean") message.openApp = msg.openApp;
@@ -463,6 +559,8 @@ const TRACKED_COOKIE_NAMES = new Set([
   "sc_anonymous_id",
   "moe_uuid",
   "datadome",
+  "skylab_next_access_token_v4",
+  "skylab_next_refresh_token_v4",
 ]);
 
 const TRACKED_DOMAIN_SUFFIXES = [
@@ -479,6 +577,7 @@ const TRACKED_DOMAIN_SUFFIXES = [
   ".pinterest.com",
   ".hotmart.com",
   ".udemy.com",
+  ".rocketseat.com.br",
   ".bsky.app",
   ".bsky.social",
   ".telegram.org",
@@ -499,6 +598,7 @@ function platformForDomain(domain) {
   if (d.endsWith(".pinterest.com")) return "pinterest";
   if (d.endsWith(".hotmart.com")) return "hotmart";
   if (d.endsWith(".udemy.com")) return "udemy";
+  if (d.endsWith(".rocketseat.com.br") || d === "rocketseat.com.br") return "rocketseat";
   if (d.endsWith(".bsky.app") || d.endsWith(".bsky.social")) return "bluesky";
   if (d.endsWith(".telegram.org")) return "telegram";
   if (d.endsWith(".soundcloud.com") || d === "soundcloud.com") return "soundcloud";
@@ -598,6 +698,7 @@ async function scanAllPlatformsForCookies() {
     "pinterest",
     "hotmart",
     "udemy",
+    "rocketseat",
     "bluesky",
     "telegram",
   ];

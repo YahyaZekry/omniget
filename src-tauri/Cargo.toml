@@ -1,12 +1,17 @@
 [workspace]
-members = [".", "omniget-core", "omniget-plugin-sdk", "omniget-cli"]
+members = [".", "omniget-core", "omniget-plugin-sdk", "omniget-cli", "omnidisc-proto", "omnidisc-media", "omnidisc-mls", "omniget-world-tools", "omniget-world", "omniworld-server"]
 resolver = "2"
 
 [package]
 name = "omniget"
-version = "0.8.6"
-description = "A Tauri App"
-authors = ["you"]
+version = "0.10.0"
+description = "Course and video downloader with a yt-dlp GUI, and a desktop app to run AI agents (Claude Code, Codex, Gemini CLI, Ollama) with permissions, undo, jobs, loops and an MCP server"
+authors = ["tonhowtf"]
+license = "GPL-3.0"
+repository = "https://github.com/tonhowtf/omniget"
+homepage = "https://tonho.wtf"
+keywords = ["downloader", "yt-dlp", "ai-agents", "mcp", "tauri"]
+categories = ["multimedia", "development-tools", "gui"]
 edition = "2021"
 
 [lib]
@@ -16,8 +21,15 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+[features]
+default = ["linux-capture"]
+# Off for the x86_64 Linux release, whose runner has PipeWire headers older than
+# the capture backend can compile against. Everything else in the client is
+# unaffected, and `MediaCapabilities` reports the loss rather than hiding it.
+linux-capture = ["omnidisc-media/linux-capture"]
+
 [dependencies]
-tauri = { version = "2", features = ["protocol-asset", "tray-icon"] }
+tauri = { version = "2", features = ["protocol-asset", "tray-icon", "macos-private-api"] }
 tauri-plugin-shell = "2"
 tauri-plugin-store = "2"
 tauri-plugin-dialog = "2"
@@ -65,6 +77,10 @@ qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 open = "5"
 omniget-core = { path = "omniget-core", features = ["desktop"] }
 omniget-plugin-sdk = { path = "omniget-plugin-sdk" }
+omnidisc-proto = { path = "omnidisc-proto" }
+omnidisc-media = { path = "omnidisc-media", default-features = false, features = ["rnnoise"] }
+omnidisc-mls = { path = "omnidisc-mls" }
+omniget-world = { path = "omniget-world" }
 libloading = "0.8"
 which = "7"
 librqbit = "8.1.1"
@@ -76,17 +92,27 @@ native-tls = "0.2.18"
 fs4 = "1"
 
 [target.'cfg(windows)'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
 webview2-com = "0.38"
-windows = { version = "0.61", features = ["Win32_System_Com", "Win32_UI_WindowsAndMessaging"] }
+windows = { version = "0.61", features = ["Win32_Foundation", "Win32_Media_Audio", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_UI_WindowsAndMessaging"] }
 
 # Reading WKWebView's cookie store directly — document.cookie cannot see
 # HttpOnly cookies, which is the whole point of the auth webview (#287).
 # Versions track what wry already resolves, so this adds no new build cost.
 [target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", features = ["NSHTTPCookie", "NSArray", "NSString"] }
 objc2-web-kit = { version = "0.3", features = ["WKWebView", "WKWebViewConfiguration", "WKWebsiteDataStore", "WKHTTPCookieStore"] }
 block2 = "0.6"
+
+# Same idea for WebKitGTK (#288). Pinned to the exact version wry resolves so
+# it is the same compiled crate, not a second copy.
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = { version = "=2.0.2", features = ["v2_38"] }
+# Secret Service over zbus (pure Rust, no libdbus at build time). Plan §9.4.
+# Falls back to the encrypted file store on PlatformFailure/NoStorageAccess.
+keyring = { version = "3", features = ["async-secret-service", "crypto-rust", "tokio"] }
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-process = "2.3.1"

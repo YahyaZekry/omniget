@@ -521,13 +521,13 @@
   .play-big:disabled { opacity: 0.4; cursor: default; }
   .ghost-big {
     width: 40px; height: 40px; padding: 0;
-    background: transparent; border: 1px solid color-mix(in oklab, var(--content-border) 70%, transparent);
+    background: transparent; border: none;
     border-radius: 50%; color: var(--tertiary); cursor: pointer;
     display: grid; place-items: center;
     transition: color 120ms ease, border-color 120ms ease;
   }
   .ghost-big:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
-  .ghost-big.danger:hover { color: var(--error, #dc2626); border-color: var(--error, #dc2626); }
+  .ghost-big.danger:hover { color: var(--error); border-color: var(--error); }
   .ghost-big:disabled { opacity: 0.4; cursor: default; }
 
   .track-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -577,7 +577,7 @@
   .ico {
     width: 26px; height: 26px; padding: 0;
     background: transparent;
-    border: 1px solid color-mix(in oklab, var(--content-border) 60%, transparent);
+    border: none;
     border-radius: 4px;
     color: var(--tertiary);
     cursor: pointer;
@@ -592,9 +592,9 @@
     background: color-mix(in oklab, var(--accent) 8%, transparent);
   }
   .ico.danger:hover {
-    color: var(--error, #dc2626);
-    border-color: var(--error, #dc2626);
-    background: color-mix(in oklab, var(--error, #dc2626) 10%, transparent);
+    color: var(--error);
+    border-color: var(--error);
+    background: color-mix(in oklab, var(--error) 10%, transparent);
   }
   .ico:disabled { opacity: 0.3; cursor: default; }
 
@@ -616,7 +616,7 @@
   }
   .confirm-dialog {
     background: var(--surface, var(--button-elevated));
-    border: 1px solid var(--content-border);
+    border: none;
     border-radius: 12px;
     padding: 20px;
     max-width: 380px;
@@ -627,11 +627,11 @@
   .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
   .confirm-actions .ghost {
     padding: 8px 14px; background: transparent;
-    border: 1px solid color-mix(in oklab, var(--content-border) 70%, transparent);
+    border: none;
     border-radius: 8px; color: var(--secondary); font-family: inherit; font-size: 13px; cursor: pointer;
   }
   .confirm-actions .danger {
-    padding: 8px 14px; background: var(--error, #dc2626); color: white;
+    padding: 8px 14px; background: var(--error); color: white;
     border: 0; border-radius: 8px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
   }
   .confirm-actions .primary {
@@ -682,7 +682,7 @@
     .progress-fill { transition: none; }
   }
   .muted { color: var(--tertiary); font-size: 13px; }
-  .error { color: var(--error, #dc2626); font-size: 13px; }
+  .error { color: var(--error); font-size: 13px; }
   @media (max-width: 720px) {
     .hero { flex-direction: column; align-items: flex-start; }
     .play-cell { grid-template-columns: 28px 36px 1fr auto; }

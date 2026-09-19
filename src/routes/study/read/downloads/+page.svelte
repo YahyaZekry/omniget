@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
+  import { t } from "$lib/i18n";
   import { pluginInvoke } from "$lib/plugin-invoke";
   import PageHero from "$lib/study-components/PageHero.svelte";
   import ConfirmDialog from "$lib/study-components/ConfirmDialog.svelte";
@@ -262,7 +263,7 @@
         class:active={filter === "finished"}
         onclick={() => (filter = "finished")}
       >
-        Concluídos <span class="count">{counts.finished}</span>
+        {$t("study.read.downloads.finished")} <span class="count">{counts.finished}</span>
       </button>
       <button
         type="button"
@@ -279,7 +280,7 @@
       onclick={() => (confirmClearOpen = true)}
       disabled={clearingFinished || (counts.finished === 0 && counts.errored === 0)}
     >
-      {clearingFinished ? "Limpando…" : "Limpar concluídos"}
+      {clearingFinished ? $t("study.read.downloads.clearing") : $t("study.read.downloads.clear_finished")}
     </button>
   </div>
 
@@ -351,7 +352,7 @@
               type="button"
               class="btn ghost sm"
               onclick={() => showTorrents(d)}
-              title="Listar mirrors torrent disponíveis"
+              title={$t("study.read.downloads.list_mirrors")}
             >
               Mirrors…
             </button>
@@ -414,8 +415,8 @@
 
 <ConfirmDialog
   bind:open={confirmClearOpen}
-  title="Limpar concluídos"
-  message="Vai remover entradas de downloads concluídos e cancelados. Os arquivos baixados continuam intactos."
+  title={$t("study.read.downloads.clear_finished_title")}
+  message={$t("study.read.downloads.clear_finished_body")}
   confirmLabel="Limpar"
   variant="danger"
   onConfirm={clearFinished}
@@ -443,7 +444,7 @@
     gap: 2px;
     padding: 2px;
     background: var(--button-elevated);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
   }
   .tab {
@@ -506,7 +507,7 @@
     justify-content: space-between;
     gap: 12px;
     padding: 12px 16px;
-    border: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border: none;
     border-radius: var(--border-radius);
     background: var(--surface);
   }
@@ -648,7 +649,7 @@
   }
   .modal {
     background: var(--popup-bg, var(--surface));
-    border: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border: none;
     border-radius: var(--border-radius);
     padding: 20px;
     max-width: 480px;
@@ -668,7 +669,7 @@
     display: flex;
     justify-content: flex-end;
     gap: 8px;
-    border-top: 1px solid color-mix(in oklab, var(--input-border) 40%, transparent);
+    border-top: none;
     padding-top: 12px;
   }
 
@@ -688,7 +689,7 @@
     justify-content: space-between;
     gap: 12px;
     padding: 8px 12px;
-    border: 1px solid color-mix(in oklab, var(--input-border) 50%, transparent);
+    border: none;
     border-radius: var(--border-radius);
   }
   .torrent-info {

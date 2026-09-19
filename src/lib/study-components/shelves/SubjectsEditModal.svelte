@@ -1,5 +1,6 @@
 <script lang="ts">
   import { pluginInvoke } from "$lib/plugin-invoke";
+import { t } from "$lib/i18n";
   import {
     studySubjectsListForCourse,
     studySubjectsSetForCourse,
@@ -88,7 +89,7 @@
     class="backdrop"
     role="dialog"
     aria-modal="true"
-    aria-label="Editar matérias"
+    aria-label={$t("study.course.subjects_edit_aria")}
     tabindex="-1"
     onkeydown={onBackdropKey}
   >
@@ -100,20 +101,20 @@
     ></button>
     <div class="modal" role="document">
       <header class="head">
-        <h2>Matérias do curso</h2>
-        <button type="button" class="close" onclick={onClose} aria-label="Fechar">×</button>
+        <h2>{$t("study.course.subjects_edit_title")}</h2>
+        <button type="button" class="close" onclick={onClose} aria-label={$t("study.common.close")}>×</button>
       </header>
       <div class="body">
         {#if loading}
-          <p class="muted">Carregando…</p>
+          <p class="muted">{$t("study.common.loading")}</p>
         {:else if error}
           <p class="error">{error}</p>
         {:else if allSubjects.length === 0}
           <p class="muted">
-            Nenhuma matéria criada. Vá para a aba Foco e crie uma primeiro.
+            {$t("study.course.subjects_empty")}
           </p>
         {:else}
-          <ul class="list" aria-label="Lista de matérias">
+          <ul class="list" aria-label={$t("study.course.subjects_list_aria")}>
             {#each allSubjects as s (s.id)}
               {@const isSelected = selected.has(s.id)}
               <li>
@@ -184,7 +185,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 16px 20px;
-    border-bottom: 1px solid color-mix(in oklab, var(--content-border) 40%, transparent);
+    border-bottom: none;
   }
 
   .head h2 {
@@ -257,7 +258,7 @@
     justify-content: flex-end;
     gap: 8px;
     padding: 12px 20px;
-    border-top: 1px solid color-mix(in oklab, var(--content-border) 40%, transparent);
+    border-top: none;
   }
 
   .btn {
@@ -266,7 +267,7 @@
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
-    border: 1px solid color-mix(in oklab, var(--content-border) 70%, transparent);
+    border: none;
     background: transparent;
     color: inherit;
   }
@@ -297,7 +298,7 @@
   }
 
   .error {
-    color: var(--error, #dc2626);
+    color: var(--error);
     font-size: 13px;
     margin: 0;
   }

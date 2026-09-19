@@ -28,6 +28,14 @@
       </div>
       <button class="toggle" class:on={settings.download.download_subtitles} onclick={() => toggleBool("download", "download_subtitles", settings.download.download_subtitles)} role="switch" aria-checked={settings.download.download_subtitles} aria-label={$t('settings.download.download_subtitles') as string}><span class="toggle-knob"></span></button>
     </div>
+    <div class="divider"></div>
+    <div class="setting-row">
+      <div class="setting-col">
+        <span class="setting-label">{$t('settings.download.download_attachments')}</span>
+        <span class="setting-path">{$t('settings.download.download_attachments_desc')}</span>
+      </div>
+      <button class="toggle" class:on={settings.download.download_attachments} onclick={() => toggleBool("download", "download_attachments", settings.download.download_attachments)} role="switch" aria-checked={settings.download.download_attachments} aria-label={$t('settings.download.download_attachments') as string}><span class="toggle-knob"></span></button>
+    </div>
     {#if settings.download.download_subtitles}
       <div class="divider"></div>
       <div class="setting-row">
@@ -87,6 +95,14 @@
         <span class="setting-path">{$t('settings.download.embed_thumbnail_desc')}</span>
       </div>
       <button class="toggle" class:on={settings.download.embed_thumbnail} onclick={() => toggleBool("download", "embed_thumbnail", settings.download.embed_thumbnail)} role="switch" aria-checked={settings.download.embed_thumbnail} aria-label={$t('settings.download.embed_thumbnail') as string}><span class="toggle-knob"></span></button>
+    </div>
+    <div class="divider"></div>
+    <div class="setting-row">
+      <div class="setting-col">
+        <span class="setting-label">{$t('settings.download.write_nfo_sidecar')}</span>
+        <span class="setting-path">{$t('settings.download.write_nfo_sidecar_desc')}</span>
+      </div>
+      <button class="toggle" class:on={settings.download.write_nfo_sidecar} onclick={() => toggleBool("download", "write_nfo_sidecar", settings.download.write_nfo_sidecar)} role="switch" aria-checked={settings.download.write_nfo_sidecar} aria-label={$t('settings.download.write_nfo_sidecar') as string}><span class="toggle-knob"></span></button>
     </div>
   </div>
 {/if}

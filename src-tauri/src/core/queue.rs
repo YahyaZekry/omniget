@@ -40,6 +40,8 @@ use crate::core::ffmpeg::{self, MetadataEmbed};
 use crate::models::media::MediaInfo;
 use crate::platforms::traits::PlatformDownloader;
 use crate::storage::config;
+use omniget_core::core::ytdlp::CommandRecord;
+use omniget_core::models::progress::StreamInfo;
 
 struct CachedInfo {
     info: MediaInfo,
@@ -147,6 +149,30 @@ pub struct QueueItemInfo {
     pub quality: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub download_mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub author: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duration_seconds: Option<f64>,
+    /// Fase atual (`fetching_info`, `downloading_video`, `merging`…), a mesma
+    /// que vai no evento de progresso, para a tela não depender de ter visto
+    /// o evento.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phase: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stream: Option<StreamInfo>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub streams_done: Vec<StreamInfo>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub planned_formats: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fragment_index: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fragment_count: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub started_at_ms: Option<u64>,
+    /// Último comando yt-dlp desta tentativa (redigido), quando houve um.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub command: Option<CommandRecord>,
 }
 
 pub struct QueueItem {
@@ -190,6 +216,15 @@ pub struct QueueItem {
     pub torrent_files: Option<Vec<usize>>,
     pub scheduled_at_ms: Option<u64>,
     pub stop_at_ms: Option<u64>,
+    pub phase: Option<String>,
+    pub current_stream: Option<StreamInfo>,
+    pub streams_done: Vec<StreamInfo>,
+    pub planned_formats: Option<Vec<String>>,
+    pub fragment_index: Option<u32>,
+    pub fragment_count: Option<u32>,
+    pub started_at_ms: Option<u64>,
+    /// Comando completo escrito pelo usuário em "editar e tentar de novo".
+    pub ytdlp_argv_override: Option<Vec<String>>,
 }
 
 impl QueueItem {
@@ -217,7 +252,31 @@ impl QueueItem {
             eta_seconds: self.eta_seconds,
             quality: self.quality.clone(),
             download_mode: self.download_mode.clone(),
+            author: self
+                .media_info
+                .as_ref()
+                .map(|m| m.author.clone())
+                .filter(|a| !a.is_empty() && a != "unknown"),
+            duration_seconds: self.media_info.as_ref().and_then(|m| m.duration_seconds),
+            phase: self.phase.clone(),
+            stream: self.current_stream.clone(),
+            streams_done: self.streams_done.clone(),
+            planned_formats: self.planned_formats.clone(),
+            fragment_index: self.fragment_index,
+            fragment_count: self.fragment_count,
+            started_at_ms: self.started_at_ms,
+            command: omniget_core::core::ytdlp::get_command(self.id),
         }
+    }
+
+    fn reset_run_state(&mut self) {
+        self.phase = None;
+        self.current_stream = None;
+        self.streams_done.clear();
+        self.planned_formats = None;
+        self.fragment_index = None;
+        self.fragment_count = None;
+        self.started_at_ms = None;
     }
 }
 
@@ -226,6 +285,13 @@ pub struct DownloadQueue {
     pub max_concurrent: u32,
     pub stagger_delay_ms: u64,
     pub default_max_retries: u32,
+    /// Ultimo id entregue por `next_available_id`. Sem ele, dois `download_from_url`
+    /// simultaneos (um lote colado na omnibox dispara todos de uma vez) pegam o
+    /// mesmo timestamp em ms, soltam o lock para resolver o downloader e so depois
+    /// enfileiram — os dois entram com o mesmo id. Como todo o resto da fila acha
+    /// o item por `find(|i| i.id == id)`, o segundo item some: baixa o primeiro
+    /// duas vezes e o resto do lote nunca sai.
+    last_issued_id: u64,
 }
 
 fn can_finish_active_item(status: &QueueStatus) -> bool {
@@ -239,6 +305,7 @@ impl DownloadQueue {
             max_concurrent,
             stagger_delay_ms: 150,
             default_max_retries: 3,
+            last_issued_id: 0,
         }
     }
 
@@ -311,6 +378,14 @@ impl DownloadQueue {
             torrent_files,
             scheduled_at_ms,
             stop_at_ms,
+            phase: None,
+            current_stream: None,
+            streams_done: Vec::new(),
+            planned_formats: None,
+            fragment_index: None,
+            fragment_count: None,
+            started_at_ms: None,
+            ytdlp_argv_override: None,
         };
         crate::core::recovery::persist(crate::core::recovery::RecoveryItem {
             id: item.id,
@@ -397,6 +472,14 @@ impl DownloadQueue {
                 torrent_files: None,
                 scheduled_at_ms: None,
                 stop_at_ms: None,
+                phase: None,
+                current_stream: None,
+                streams_done: Vec::new(),
+                planned_formats: None,
+                fragment_index: None,
+                fragment_count: None,
+                started_at_ms: None,
+                ytdlp_argv_override: None,
             };
             self.items.push(item);
         }
@@ -421,11 +504,15 @@ impl DownloadQueue {
             .collect()
     }
 
-    pub fn next_available_id(&self, preferred: u64) -> u64 {
-        let mut id = preferred;
+    /// Reserva um id livre. E `&mut self` de proposito: a reserva precisa
+    /// acontecer dentro do mesmo lock da consulta, senao chamadas concorrentes
+    /// recebem o mesmo numero.
+    pub fn next_available_id(&mut self, preferred: u64) -> u64 {
+        let mut id = preferred.max(self.last_issued_id.saturating_add(1));
         while self.items.iter().any(|i| i.id == id) {
             id = id.saturating_add(1);
         }
+        self.last_issued_id = id;
         id
     }
 
@@ -437,6 +524,53 @@ impl DownloadQueue {
         {
             item.status = QueueStatus::Active;
             item.cancel_token = CancellationToken::new();
+            item.reset_run_state();
+            item.started_at_ms = Some(now_ms());
+        }
+    }
+
+    /// Estado "vivo" do download (stream atual, fragmento, plano, fase). Vem
+    /// do forwarder de progresso; separado de `update_progress` para não
+    /// engordar a assinatura de números.
+    #[allow(clippy::too_many_arguments)]
+    pub fn update_run_state(
+        &mut self,
+        id: u64,
+        phase: Option<&str>,
+        stream: Option<&StreamInfo>,
+        fragment: Option<(u32, u32)>,
+        planned: Option<&Vec<String>>,
+    ) {
+        if let Some(item) = self.items.iter_mut().find(|i| i.id == id) {
+            if let Some(p) = phase {
+                item.phase = Some(p.to_string());
+            }
+            if let Some(s) = stream {
+                let changed = item
+                    .current_stream
+                    .as_ref()
+                    .map(|c| c.format_id != s.format_id)
+                    .unwrap_or(true);
+                if changed {
+                    if let Some(prev) = item.current_stream.take() {
+                        if !item
+                            .streams_done
+                            .iter()
+                            .any(|d| d.format_id == prev.format_id)
+                        {
+                            item.streams_done.push(prev);
+                        }
+                    }
+                    item.current_stream = Some(s.clone());
+                }
+            }
+            if let Some((i, c)) = fragment {
+                item.fragment_index = Some(i);
+                item.fragment_count = Some(c);
+            }
+            if let Some(p) = planned {
+                item.planned_formats = Some(p.clone());
+            }
         }
     }
 
@@ -742,10 +876,46 @@ impl DownloadQueue {
                 item.file_path = None;
                 item.file_size_bytes = None;
                 item.retry_count = 0;
+                item.ytdlp_argv_override = None;
+                item.reset_run_state();
                 return true;
             }
         }
         false
+    }
+
+    /// Re-enfileira com o comando escrito pelo usuário. Só faz sentido para
+    /// item que já rodou o yt-dlp (tem `CommandRecord`); para os outros o
+    /// override é ignorado pela plataforma, então recusamos aqui.
+    pub fn retry_with_command(&mut self, id: u64, argv: Vec<String>) -> Result<(), String> {
+        let item = self
+            .items
+            .iter_mut()
+            .find(|i| i.id == id)
+            .ok_or_else(|| "Download not found".to_string())?;
+        if !matches!(
+            item.status,
+            QueueStatus::Error { .. } | QueueStatus::Complete { .. }
+        ) {
+            return Err("Download is still running".to_string());
+        }
+        if omniget_core::core::ytdlp::get_command(id).is_none() {
+            return Err(
+                "This download did not run yt-dlp; there is no command to edit".to_string(),
+            );
+        }
+        item.status = QueueStatus::Queued;
+        item.cancel_token = CancellationToken::new();
+        item.percent = 0.0;
+        item.speed_bytes_per_sec = 0.0;
+        item.downloaded_bytes = 0;
+        item.file_path = None;
+        item.file_size_bytes = None;
+        item.retry_count = 0;
+        item.max_retries = 0;
+        item.ytdlp_argv_override = Some(argv);
+        item.reset_run_state();
+        Ok(())
     }
 
     /// Remove an item. Returns the torrent_id if the item needs torrent cleanup (caller should delete from session).
@@ -754,6 +924,7 @@ impl DownloadQueue {
         if result.is_some() {
             crate::core::recovery::remove(id);
             crate::core::queue_history::remove(id);
+            omniget_core::core::ytdlp::clear_command(id);
         }
         result
     }
@@ -838,7 +1009,7 @@ impl ProgressThrottle {
     }
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Default)]
 pub struct QueueItemProgress {
     pub id: u64,
     pub title: String,
@@ -850,6 +1021,14 @@ pub struct QueueItemProgress {
     pub phase: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub eta_seconds: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stream: Option<StreamInfo>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fragment_index: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fragment_count: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub planned_formats: Option<Vec<String>>,
 }
 
 pub fn emit_queue_state_from_state(app: &tauri::AppHandle, state: Vec<QueueItemInfo>) {
@@ -1002,6 +1181,7 @@ async fn spawn_download_inner(
             total_bytes: None,
             phase: "preparing".to_string(),
             eta_seconds: None,
+            ..Default::default()
         },
     );
 
@@ -1036,6 +1216,7 @@ async fn spawn_download_inner(
         cookie_slug,
         custom_ytdlp_args,
         torrent_files,
+        argv_override,
     ) = {
         let q = queue.lock().await;
         let item = match q.items.iter().find(|i| i.id == item_id) {
@@ -1061,6 +1242,7 @@ async fn spawn_download_inner(
             item.cookie_slug.clone(),
             item.custom_ytdlp_args.clone(),
             item.torrent_files.clone(),
+            item.ytdlp_argv_override.clone(),
         )
     };
 
@@ -1135,6 +1317,7 @@ async fn spawn_download_inner(
                     total_bytes: None,
                     phase: "fetching_info".to_string(),
                     eta_seconds: None,
+                    ..Default::default()
                 },
             );
 
@@ -1267,6 +1450,7 @@ async fn spawn_download_inner(
             total_bytes: info.file_size_bytes,
             phase: "starting".to_string(),
             eta_seconds: None,
+            ..Default::default()
         },
     );
 
@@ -1335,6 +1519,8 @@ async fn spawn_download_inner(
         let mut last_percent: f64 = 0.0;
         let mut last_advance = std::time::Instant::now();
         let mut stalled = false;
+        let mut current_stream: Option<StreamInfo> = None;
+        let mut current_fragment: Option<(u32, u32)> = None;
 
         loop {
             let update = tokio::select! {
@@ -1365,6 +1551,7 @@ async fn spawn_download_inner(
                                 total_bytes,
                                 phase: "stalled".to_string(),
                                 eta_seconds: None,
+                                ..Default::default()
                             },
                         );
                     }
@@ -1373,8 +1560,24 @@ async fn spawn_download_inner(
             };
 
             let percent = update.percent;
-            if !throttle.should_emit() && percent < 100.0 && !update.has_real_metrics() {
+            if !throttle.should_emit()
+                && percent < 100.0
+                && !update.has_real_metrics()
+                && !update.is_structural()
+            {
                 continue;
+            }
+            if let Some(s) = update.stream.as_ref() {
+                let changed = current_stream
+                    .as_ref()
+                    .map(|c: &StreamInfo| c.format_id != s.format_id)
+                    .unwrap_or(true);
+                if changed {
+                    current_stream = Some(s.clone());
+                }
+            }
+            if let (Some(i), Some(c)) = (update.fragment_index, update.fragment_count) {
+                current_fragment = Some((i, c));
             }
 
             let now = std::time::Instant::now();
@@ -1438,6 +1641,11 @@ async fn spawn_download_inner(
             last_percent = clamped;
 
             let phase_value = if percent < 0.0 { percent } else { clamped };
+            let stream_phase = match current_stream.as_ref() {
+                Some(s) if s.has_video() => "downloading_video",
+                Some(s) if s.has_audio() => "downloading_audio",
+                _ => "downloading",
+            };
             let phase = if let Some(ref custom_phase) = update.phase {
                 custom_phase.as_str()
             } else {
@@ -1445,7 +1653,7 @@ async fn spawn_download_inner(
                     p if p < -1.5 => "connecting",
                     p if p < -0.5 => "starting",
                     p if p > 99.5 => "finalizing",
-                    p if p > 0.0 => "downloading",
+                    p if p > 0.0 => stream_phase,
                     _ => "starting",
                 }
             };
@@ -1476,6 +1684,13 @@ async fn spawn_download_inner(
                     tid,
                     eta_seconds,
                 );
+                q.update_run_state(
+                    item_id,
+                    Some(phase),
+                    update.stream.as_ref(),
+                    current_fragment,
+                    update.planned_formats.as_ref(),
+                );
             }
 
             let _ = app_progress.emit(
@@ -1490,6 +1705,10 @@ async fn spawn_download_inner(
                     total_bytes: resolved_total,
                     phase: phase.to_string(),
                     eta_seconds,
+                    stream: current_stream.clone(),
+                    fragment_index: current_fragment.map(|f| f.0),
+                    fragment_count: current_fragment.map(|f| f.1),
+                    planned_formats: update.planned_formats.clone(),
                 },
             );
         }
@@ -1520,10 +1739,23 @@ async fn spawn_download_inner(
             }
         }
     };
-    let result = omniget_core::core::log_hook::CURRENT_COOKIE_SLUG
+    if let Some(argv) = argv_override.as_ref() {
+        append_download_log(
+            &app,
+            item_id,
+            format!(
+                "[omniget] running user-edited command ({} args), single attempt",
+                argv.len()
+            ),
+        );
+    }
+    let result = omniget_core::core::log_hook::CURRENT_ARGV_OVERRIDE
         .scope(
-            cookie_slug.clone(),
-            omniget_core::core::log_hook::CURRENT_DOWNLOAD_ID.scope(item_id, dl_future),
+            argv_override.clone(),
+            omniget_core::core::log_hook::CURRENT_COOKIE_SLUG.scope(
+                cookie_slug.clone(),
+                omniget_core::core::log_hook::CURRENT_DOWNLOAD_ID.scope(item_id, dl_future),
+            ),
         )
         .await;
     omniget_core::core::ytdlp::clear_ext_user_agent(&url);
@@ -1612,6 +1844,20 @@ async fn spawn_download_inner(
                 .await
                 {
                     tracing::warn!("Metadata embed failed for '{}': {}", info.title, e);
+                }
+            }
+
+            if settings.download.write_nfo_sidecar
+                && !is_seeding
+                && crate::core::nfo_sidecar::applies(&info)
+            {
+                match crate::core::nfo_sidecar::write(&dl.file_path, &info, &url).await {
+                    Ok(path) => append_download_log(
+                        &app,
+                        item_id,
+                        format!("[omniget] wrote NFO sidecar: {}", path.to_string_lossy()),
+                    ),
+                    Err(e) => tracing::warn!("NFO sidecar failed for '{}': {}", info.title, e),
                 }
             }
 
@@ -1860,6 +2106,16 @@ pub async fn prefetch_info(
     prefetch_info_with_emit(url, downloader, platform, ytdlp_path, None).await;
 }
 
+/// Pré-buscas de info ao mesmo tempo. Cada uma é um yt-dlp inteiro; colar
+/// uma lista de URLs disparava uma por linha e a tempestade de bootstrap
+/// (B1) derrubava o download que já estava rodando. Duas por vez; o resto
+/// espera na fila e ainda cabe no timeout, ou cai fora sem prejuízo — o
+/// download busca a info de novo quando começa.
+fn prefetch_slots() -> &'static tokio::sync::Semaphore {
+    static SLOTS: std::sync::OnceLock<tokio::sync::Semaphore> = std::sync::OnceLock::new();
+    SLOTS.get_or_init(|| tokio::sync::Semaphore::new(2))
+}
+
 pub async fn prefetch_info_with_emit(
     url: &str,
     downloader: &dyn PlatformDownloader,
@@ -1869,6 +2125,18 @@ pub async fn prefetch_info_with_emit(
 ) {
     let _timer_start = std::time::Instant::now();
     tracing::debug!("[perf] prefetch_info: started");
+    let _slot = match tokio::time::timeout(
+        std::time::Duration::from_secs(20),
+        prefetch_slots().acquire(),
+    )
+    .await
+    {
+        Ok(Ok(permit)) => permit,
+        _ => {
+            tracing::debug!("[perf] prefetch_info: skipped, too many prefetches in flight");
+            return;
+        }
+    };
     let result = tokio::time::timeout(
         std::time::Duration::from_secs(15),
         fetch_and_cache_info(url, downloader, platform, ytdlp_path),
@@ -1938,6 +2206,7 @@ pub async fn try_start_next(app: tauri::AppHandle, queue: Arc<tokio::sync::Mutex
                 total_bytes: None,
                 phase: "queued_starting".to_string(),
                 eta_seconds: None,
+                ..Default::default()
             },
         );
 
@@ -2109,5 +2378,33 @@ mod kind_tests {
     fn case_insensitive() {
         assert_eq!(kind_from_platform("YouTube"), QueueKind::Video);
         assert_eq!(kind_from_platform("TELEGRAM"), QueueKind::TelegramMedia);
+    }
+}
+
+#[cfg(test)]
+mod id_tests {
+    use super::DownloadQueue;
+
+    // Regressao do lote: duas chamadas seguidas dentro do mesmo milissegundo
+    // pediam o mesmo `preferred` e recebiam o mesmo id, porque a fila ainda
+    // estava vazia nas duas consultas. O id precisa avancar mesmo assim.
+    #[test]
+    fn ids_never_repeat_for_the_same_preferred_value() {
+        let mut q = DownloadQueue::new(3);
+        let a = q.next_available_id(1_700_000_000_000);
+        let b = q.next_available_id(1_700_000_000_000);
+        let c = q.next_available_id(1_700_000_000_000);
+        assert_eq!(a, 1_700_000_000_000);
+        assert_eq!(b, a + 1);
+        assert_eq!(c, b + 1);
+    }
+
+    #[test]
+    fn a_later_timestamp_still_wins() {
+        let mut q = DownloadQueue::new(3);
+        let a = q.next_available_id(1_700_000_000_000);
+        let b = q.next_available_id(1_700_000_005_000);
+        assert_eq!(a, 1_700_000_000_000);
+        assert_eq!(b, 1_700_000_005_000);
     }
 }

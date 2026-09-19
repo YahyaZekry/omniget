@@ -19,6 +19,8 @@
   import GoalsTab from "$components/league/GoalsTab.svelte";
   import AutomationTab from "$components/league/AutomationTab.svelte";
   import HistoryTab from "$components/league/HistoryTab.svelte";
+  import ProfileTab from "$components/league/ProfileTab.svelte";
+  import CoachTab from "$components/league/CoachTab.svelte";
   import type { Champion, GoalKey, LobbyQueue, RankedEntry, Role, ScoutPlayer } from "$components/league/shared";
   import type { Platform } from "$components/league/registry";
 
@@ -129,7 +131,7 @@
     }
   }
 
-  const TAB_IDS = ["overview", "analysis", "meta", "search", "live", "goals", "automation", "history"] as const;
+  const TAB_IDS = ["overview", "profile", "analysis", "meta", "search", "live", "goals", "automation", "coach", "history"] as const;
   type Tab = (typeof TAB_IDS)[number];
   let tab = $state<Tab>("overview");
 
@@ -504,6 +506,9 @@
       <div class="tab-panel" class:active={tab === "overview"}>
         <OverviewTab {summoner} {profileLoading} {ranked} {phase} {champSelect} {liveGame} {lobby} {queues} {actionError} {champions} {championById} {championByAlias} onAction={action} active={tab === "overview"} />
       </div>
+      <div class="tab-panel" class:active={tab === "profile"}>
+        <ProfileTab {summoner} {champions} active={tab === "profile"} />
+      </div>
       <div class="tab-panel" class:active={tab === "analysis"}>
         <AnalysisTab {analysis} {analysisLoading} onRefreshAnalysis={loadAnalysis} {phase} {scoutPlayers} {scoutReports} {scoutLoading} onRefreshScouting={loadScouting} {championById} {notes} onSaveNote={saveNote} {timesSeenBefore} {platform} clientConnected={status.connected} active={tab === "analysis"} />
       </div>
@@ -521,6 +526,9 @@
       </div>
       <div class="tab-panel" class:active={tab === "automation"}>
         <AutomationTab {champions} {championById} active={tab === "automation"} />
+      </div>
+      <div class="tab-panel" class:active={tab === "coach"}>
+        <CoachTab {games} {phase} {championById} active={tab === "coach"} />
       </div>
       <div class="tab-panel" class:active={tab === "history"}>
         <HistoryTab {games} loading={loadingHistory} onRefresh={loadHistory} {championById} active={tab === "history"} />
@@ -557,7 +565,7 @@
     gap: 10px;
     padding: calc(var(--padding) * 2);
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: none;
     border-radius: var(--border-radius);
     }
 
@@ -592,7 +600,7 @@
     font-size: 12.5px;
     color: var(--gray);
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: none;
     border-radius: 999px;
     }
 
@@ -622,7 +630,7 @@
     gap: 14px;
     padding: var(--padding);
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: none;
     border-radius: var(--border-radius);
     }
 
@@ -630,7 +638,7 @@
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    border: 2px solid var(--border);
+    border: none;
     object-fit: cover;
     }
 
@@ -672,7 +680,7 @@
     gap: 2px;
     padding: 7px 12px;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: calc(var(--border-radius) - 2px);
     }
 
@@ -692,7 +700,7 @@
     flex-direction: column;
     padding: var(--padding);
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: none;
     border-radius: var(--border-radius);
     }
 
@@ -713,7 +721,7 @@
     color: var(--gray);
     padding: 3px 10px;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: 999px;
     }
 
@@ -722,7 +730,7 @@
     color: var(--danger);
     padding: 8px 12px;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: none;
     border-radius: calc(var(--border-radius) - 2px);
     }
 
@@ -889,7 +897,7 @@
     gap: 4px;
     margin-bottom: 10px;
     padding: 8px 10px;
-    border: 1px solid var(--border);
+    border: none;
     border-radius: var(--border-radius);
     background: var(--surface-hover);
     }
@@ -915,7 +923,7 @@
 
   .league-page :global(.queue-chip) {
     padding: 3px 10px;
-    border: 1px solid var(--border);
+    border: none;
     border-radius: 999px;
     background: transparent;
     color: var(--text-secondary);
@@ -949,7 +957,7 @@
     align-items: baseline;
     gap: 6px;
     padding: 4px 8px;
-    border: 1px solid var(--border);
+    border: none;
     border-radius: var(--border-radius);
     font-variant-numeric: tabular-nums;
     font-size: 12.5px;
@@ -1023,7 +1031,7 @@
     padding: 3px 6px 3px 3px;
     font-size: 12.5px;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: 999px;
     }
 
@@ -1053,7 +1061,7 @@
     padding: 7px 10px;
     font-size: 13px;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: calc(var(--border-radius) - 2px);
     color: var(--text);
     }
@@ -1072,7 +1080,7 @@
     display: flex;
     flex-direction: column;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: none;
     border-radius: calc(var(--border-radius) - 2px);
     overflow: hidden;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
@@ -1102,7 +1110,7 @@
     gap: 4px;
     flex-wrap: wrap;
     padding-bottom: 2px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: none;
     }
 
   .league-page :global(.league-tab) {
@@ -1140,7 +1148,7 @@
     height: 12px;
     border-radius: 999px;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     overflow: hidden;
     }
 
@@ -1308,7 +1316,7 @@
     height: 8px;
     border-radius: 999px;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     overflow: hidden;
     }
 
@@ -1352,7 +1360,7 @@
     padding: 5px 10px;
     font-size: 12.5px;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: calc(var(--border-radius) - 2px);
     color: var(--text);
     }
@@ -1380,7 +1388,7 @@
     gap: 2px;
     padding: 10px 12px;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: calc(var(--border-radius) - 2px);
     }
 
@@ -1496,7 +1504,7 @@
     gap: 7px;
     padding: 9px 11px;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: calc(var(--border-radius) - 2px);
     }
 
@@ -1552,7 +1560,7 @@
     font-size: 11px;
     font-weight: 700;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: none;
     }
 
   .league-page :global(.tier-badge.tier-1) {
@@ -1702,7 +1710,7 @@
     gap: 5px;
     padding: 7px 9px;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: calc(var(--border-radius) - 3px);
     }
 
@@ -1814,7 +1822,7 @@
     padding: 2px 7px;
     border-radius: 999px;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: none;
     color: var(--text);
     }
 
@@ -1852,7 +1860,7 @@
     gap: 12px;
     padding: 9px 12px;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: none;
     border-radius: calc(var(--border-radius) - 2px);
     font: inherit;
     color: inherit;
@@ -1872,7 +1880,7 @@
     gap: 12px;
     padding: 9px 12px;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: none;
     border-radius: calc(var(--border-radius) - 2px);
     }
 
@@ -1911,7 +1919,7 @@
     }
 
   .league-page :global(.champ-empty) {
-    border: 1px dashed var(--input-border);
+    border: none;
     }
 
   .league-page :global(.game-info) {
@@ -1956,7 +1964,7 @@
     padding: 6px 14px;
     font-size: 13px;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: calc(var(--border-radius) - 2px);
     color: var(--text);
     cursor: pointer;
@@ -2003,7 +2011,7 @@
     flex-direction: column;
     gap: 4px;
     padding: 6px 0;
-    border-bottom: 1px solid var(--border);
+    border-bottom: none;
     }
 
   .league-page :global(.sb-identity) {
@@ -2063,7 +2071,7 @@
     }
 
   .league-page :global(.item-empty) {
-    border: 1px solid var(--border);
+    border: none;
     display: inline-block;
     }
 
@@ -2083,7 +2091,7 @@
   .league-page :global(.lookup-drawer) {
     margin-top: 12px;
     padding-top: 10px;
-    border-top: 1px solid var(--border);
+    border-top: none;
     }
 
   .league-page :global(.game-row.static) {
@@ -2097,7 +2105,7 @@
     font-size: 10px;
     font-weight: 400;
     color: var(--text-muted);
-    border: 1px solid var(--border);
+    border: none;
     border-radius: 999px;
     padding: 1px 6px;
     margin-left: 6px;
@@ -2152,7 +2160,7 @@
     justify-content: center;
     width: 18px;
     height: 18px;
-    border: 1px solid var(--border);
+    border: none;
     border-radius: 4px;
     font-size: 10.5px;
     color: var(--text-secondary);
@@ -2234,7 +2242,7 @@
 
   .league-page :global(.seg-group) {
     display: flex;
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: calc(var(--border-radius) - 2px);
     overflow: hidden;
     }
@@ -2249,7 +2257,7 @@
     }
 
   .league-page :global(.seg + .seg) {
-    border-left: 1px solid var(--input-border);
+    border-left: none;
     }
 
   .league-page :global(.seg.on) {
@@ -2279,7 +2287,7 @@
 
   .league-page :global(.spell-timer) {
     cursor: pointer;
-    border: 1px solid var(--input-border);
+    border: none;
     background: var(--surface);
     font: inherit;
     color: inherit;
@@ -2306,7 +2314,7 @@
     gap: 10px;
     padding: 10px 12px;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: none;
     border-radius: calc(var(--border-radius) - 2px);
     }
 
@@ -2373,7 +2381,7 @@
     height: 22px;
     border-radius: 999px;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     cursor: pointer;
     flex-shrink: 0;
     }

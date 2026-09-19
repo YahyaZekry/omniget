@@ -403,8 +403,8 @@
   }
 
   .dialog {
-    background: var(--popup-bg, #1a1a1a);
-    border: 1px solid var(--content-border, rgba(255, 255, 255, 0.1));
+    background: var(--popup-bg);
+    border: none;
     border-radius: var(--border-radius, 12px);
     width: 490px;
     max-width: 90vw;
@@ -419,7 +419,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 14px 18px;
-    border-bottom: 1px solid var(--content-border);
+    border-bottom: none;
   }
 
   .head h3 {
@@ -495,7 +495,7 @@
     padding: 8px 12px;
     font-size: 13px;
     background: var(--input-bg, rgba(0, 0, 0, 0.2));
-    border: 1px solid var(--input-border, rgba(255, 255, 255, 0.15));
+    border: none;
     border-radius: 8px;
     color: var(--text);
     box-sizing: border-box;
@@ -549,8 +549,8 @@
     align-items: center;
     gap: 8px;
     padding: 10px 12px;
-    background: color-mix(in srgb, #f59e0b 15%, transparent);
-    color: #f59e0b;
+    background: color-mix(in srgb, var(--warning) 15%, transparent);
+    color: var(--warning);
     border-radius: 8px;
     font-size: 12px;
     line-height: 1.4;
@@ -558,8 +558,8 @@
 
   .error-banner {
     padding: 8px 12px;
-    background: color-mix(in srgb, var(--error, #ef4444) 15%, transparent);
-    color: var(--error, #ef4444);
+    background: color-mix(in srgb, var(--error) 15%, transparent);
+    color: var(--error);
     border-radius: 8px;
     font-size: 12px;
   }
@@ -570,12 +570,12 @@
     justify-content: flex-end;
     gap: 10px;
     padding: 12px 18px;
-    border-top: 1px solid var(--content-border);
+    border-top: none;
   }
 
   .action-btn {
-    background: var(--accent);
-    color: #fff;
+    background: var(--cta);
+    color: var(--on-cta);
     border: none;
     font-weight: 600;
   }
@@ -589,9 +589,9 @@
     display: inline-block;
     width: 12px;
     height: 12px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    border: 2px solid color-mix(in srgb, var(--on-cta) 30%, transparent);
     border-radius: 50%;
-    border-top-color: #fff;
+    border-top-color: var(--on-cta);
     animation: spin 0.8s linear infinite;
   }
 
@@ -603,7 +603,7 @@
   .tier-pill:focus-visible,
   .button:focus-visible,
   .close:focus-visible {
-    outline: 2px solid var(--accent, #3b82f6);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 

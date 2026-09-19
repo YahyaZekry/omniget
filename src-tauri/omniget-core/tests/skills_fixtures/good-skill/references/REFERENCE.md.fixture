@@ -1,0 +1,6 @@
+# CSV columns
+
+| column | meaning |
+| --- | --- |
+| `from` | path of the file today, relative to the working folder |
+| `to` | path it should have |

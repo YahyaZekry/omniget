@@ -284,15 +284,15 @@
   }
 
   .dismiss:hover {
-    color: var(--error, #dc2626);
-    background: color-mix(in oklab, var(--error, #dc2626) 8%, transparent);
+    color: var(--error);
+    background: color-mix(in oklab, var(--error) 8%, transparent);
   }
 
   .dismiss-all {
     margin: 0 12px 10px;
     padding: 6px 10px;
     background: transparent;
-    border: 1px solid color-mix(in oklab, var(--content-border) 70%, transparent);
+    border: none;
     border-radius: 6px;
     color: color-mix(in oklab, currentColor 70%, transparent);
     font-size: 12px;

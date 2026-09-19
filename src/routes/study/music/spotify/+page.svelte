@@ -167,16 +167,13 @@
           />
         </svg>
       </div>
-      <h2>Conectar sua conta Spotify</h2>
+      <h2>{$t("study.music.spotify.connect_title")}</h2>
       <p class="login-body">
-        Veja sua biblioteca, playlists e histórico do Spotify dentro do OmniGet.
-        Você pode tocar em qualquer dispositivo Spotify ativo (celular, app
-        oficial). Em breve, tocar direto aqui também.
+        {$t("study.music.spotify.connect_body")}
       </p>
       {#if !spotifyStore.status.has_client_id}
         <p class="warn">
-          ⚠️ Client ID do Spotify não configurado. Reinstale ou rebuilde o plugin
-          study.
+          {$t("study.music.spotify.no_client_id")}
         </p>
       {/if}
       {#if spotifyStore.error}
@@ -185,8 +182,8 @@
       {#if spotifyStore.authInProgress}
         <div class="waiting">
           <span class="spinner"></span>
-          <span>Aguardando autorização no navegador…</span>
-          <button type="button" class="ghost-btn" onclick={doCancel}>Cancelar</button>
+          <span>{$t("study.music.spotify.waiting_auth")}</span>
+          <button type="button" class="ghost-btn" onclick={doCancel}>{$t("study.common.cancel")}</button>
         </div>
       {:else}
         <button
@@ -210,12 +207,12 @@
     {:else if !spotifyStore.isPremium}
       <div class="status-banner info">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        Modo Free: faixas tocam via YouTube em tempo real (match automático por título/artista).
+        {$t("study.music.spotify.free_mode")}
       </div>
     {:else if spotifyStore.widevineSupported === false}
       <div class="status-banner warn">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        Widevine DRM indisponível. Vai usar fallback YouTube.
+        {$t("study.music.spotify.no_widevine")}
       </div>
     {/if}
     {#if spotifyStore.recentlyPlayed.length > 0}
@@ -350,7 +347,7 @@
                 <span class="track-title-row">
                   <span class="track-title">{track.name}</span>
                   {#if spotifyStore.localMatches.has(track.id)}
-                    <span class="local-badge" title="Já está na sua biblioteca local">
+                    <span class="local-badge" title={$t("study.music.spotify.in_local_library")}>
                       ●
                     </span>
                   {/if}
@@ -424,7 +421,7 @@
   .ghost-btn {
     padding: 7px 16px;
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: none;
     border-radius: 999px;
     color: rgba(255, 255, 255, 0.85);
     font-family: inherit;

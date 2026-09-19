@@ -33,7 +33,7 @@
       <h3>{$t("study.library.notes_new_page")}</h3>
       <input
         type="text"
-        placeholder="Nome da página"
+        placeholder={$t("study.notes.nb.page_name_placeholder")}
         bind:value
         onkeydown={(e) => {
           if (e.key === "Enter") submit();
@@ -65,7 +65,7 @@
     width: 100%;
     max-width: 460px;
     background: var(--surface);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     padding: 20px;
     display: flex;
@@ -78,7 +78,7 @@
   }
   .modal input {
     padding: 10px 12px;
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     background: var(--bg);
     color: var(--text);

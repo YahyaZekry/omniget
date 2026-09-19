@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n";
   type DiffLine = { type: " " | "+" | "-"; line: string };
 
   type Props = {
@@ -71,7 +72,7 @@
   });
 </script>
 
-<div class="diff-view" role="region" aria-label="Comparação de versões">
+<div class="diff-view" role="region" aria-label={$t("study.notes.nb.diff_aria")}>
   <header class="diff-head">
     <span class="stat added">+{stats.added}</span>
     <span class="stat removed">−{stats.removed}</span>
@@ -80,7 +81,7 @@
     {/if}
   </header>
   {#if diff.length === 0}
-    <p class="empty">Sem diferenças.</p>
+    <p class="empty">{$t("study.notes.diff.none")}</p>
   {:else}
     <pre class="diff-body"><code>{#each diff as d (d.type + ":" + d.line)}<span
             class="line {d.type === '+' ? 'add' : d.type === '-' ? 'rem' : 'eq'}"
@@ -112,12 +113,12 @@
     font-weight: 600;
   }
   .stat.added {
-    background: color-mix(in oklab, var(--success, #16a34a) 18%, transparent);
-    color: var(--success, #16a34a);
+    background: color-mix(in oklab, var(--success) 18%, transparent);
+    color: var(--success);
   }
   .stat.removed {
-    background: color-mix(in oklab, var(--error, #dc2626) 18%, transparent);
-    color: var(--error, #dc2626);
+    background: color-mix(in oklab, var(--error) 18%, transparent);
+    color: var(--error);
   }
   .trunc {
     color: var(--tertiary);
@@ -133,7 +134,7 @@
     margin: 0;
     padding: 8px;
     background: var(--bg);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     font-family: var(--font-mono, ui-monospace, monospace);
     font-size: 12px;
@@ -148,11 +149,11 @@
     display: block;
   }
   .line.add {
-    background: color-mix(in oklab, var(--success, #16a34a) 14%, transparent);
+    background: color-mix(in oklab, var(--success) 14%, transparent);
     color: var(--text);
   }
   .line.rem {
-    background: color-mix(in oklab, var(--error, #dc2626) 14%, transparent);
+    background: color-mix(in oklab, var(--error) 14%, transparent);
     color: var(--text);
   }
   .line.eq {
@@ -166,11 +167,11 @@
     user-select: none;
   }
   .line.add .marker {
-    color: var(--success, #16a34a);
+    color: var(--success);
     font-weight: 700;
   }
   .line.rem .marker {
-    color: var(--error, #dc2626);
+    color: var(--error);
     font-weight: 700;
   }
   .content {

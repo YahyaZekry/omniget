@@ -1,0 +1,44 @@
+Recorded MCP servers (plan §3, Fase 3, "Plano B": real servers diverge from the
+spec, so the divergence lives in the test suite instead of in a bug report).
+
+How: each file is one real stdio session driven by a recorder that sends
+`initialize`, the `notifications/initialized` notification, `tools/list` and one
+`tools/call`, and writes down what came back. Recorded 2026-09-18 on macOS 15
+(darwin 25.5.0), node v22.22.3, npx 10.9.8. Nothing is hand-written; nothing is
+synthetic.
+
+Post-processing, by scripts/../scratchpad sanitizer (same for every file):
+- the recorder's sandbox path and the user's home directory were replaced by
+  /tmp/mcp-sandbox and /Users/user;
+- any string longer than 1500 characters was cut, with a marker at the end;
+- no credential was used to record any of these, and a test
+  (`no_recorded_fixture_contains_a_token`) fails the build if one appears.
+
+File           Package                                   Command
+-------------  ----------------------------------------  ------------------------------------------------
+filesystem     @modelcontextprotocol/server-filesystem    npx -y @modelcontextprotocol/server-filesystem <dir>
+               14 tools, protocol 2025-06-18, call: read_text_file on a file in the sandbox.
+
+github         @modelcontextprotocol/server-github        npx -y @modelcontextprotocol/server-github
+               26 tools, protocol **2024-11-05** (the package is deprecated on npm and still speaks the
+               old version — this is exactly why the client accepts any version the server negotiates).
+               Call: search_repositories "omniget", which the GitHub API answers without a token. No
+               token was set; the recorded result is public data.
+
+fetch          @tokenizin/mcp-npx-fetch                   npx -y @tokenizin/mcp-npx-fetch
+               4 tools, protocol 2025-06-18, call: fetch_txt on https://example.com.
+               NOTE: the plan names "fetch", i.e. the reference server from modelcontextprotocol/servers,
+               which is Python and needs `uvx` (or Python ≥ 3.10; this machine has 3.9 and no uv). This
+               file is a different, real fetch server rather than an invented one. Re-record against
+               `uvx mcp-server-fetch` when a machine has uv.
+
+playwright     @playwright/mcp@latest                     npx -y @playwright/mcp@latest --isolated --browser chromium
+               26 tools, protocol 2025-06-18. Browsers were NOT installed (PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1,
+               nothing under ms-playwright was downloaded): `tools/list` is the real listing, and the
+               recorded `browser_navigate` is the server's real `isError: true` answer saying the browser
+               is missing. That answer is the useful one here: it is the shape a failing tool has.
+
+context7      @upstash/context7-mcp                      npx -y @upstash/context7-mcp
+               2 tools, protocol 2025-06-18, call: resolve-library-id with {query, libraryName}.
+               No API key. Worth knowing: sending only `libraryName` (the argument older docs show)
+               is refused with "query: expected string, received undefined" — v4 requires both.

@@ -1,0 +1,12 @@
+{
+  "default_fps": 8,
+  "anims": {
+    "omni/walk":  { "fps": 10, "loop": true, "pivot": [24, 60] },
+    "omni/idle":  { "fps": 6,  "loop": true, "pivot": [24, 60] },
+    "omni/wave":  { "fps": 10, "loop": true, "pivot": [24, 60] },
+    "omni/talk":  { "fps": 8,  "loop": true, "pivot": [24, 60] },
+    "omni/sit":   { "fps": 6,  "loop": true, "pivot": [24, 60] },
+    "omni/work":  { "fps": 10, "loop": true, "pivot": [24, 60] },
+    "omni/sleep": { "fps": 4,  "loop": true, "pivot": [24, 60] }
+  }
+}

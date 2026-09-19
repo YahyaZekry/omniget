@@ -51,6 +51,11 @@ enum Commands {
         #[arg(short, long)]
         output: Option<String>,
     },
+    /// Agents of the desktop app: run a task, loop until a check passes, list jobs
+    Agent {
+        #[command(subcommand)]
+        command: commands::agent::AgentCommand,
+    },
     /// Import a cookies.txt file (Netscape format)
     ImportCookies {
         file: String,
@@ -99,6 +104,9 @@ async fn main() -> anyhow::Result<()> {
             output,
         } => {
             commands::batch::execute(file, max_concurrent, output, cli.proxy).await?;
+        }
+        Commands::Agent { command } => {
+            commands::agent::execute(command, cli.json).await?;
         }
         Commands::ImportCookies {
             file,

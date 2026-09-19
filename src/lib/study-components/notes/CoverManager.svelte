@@ -3,6 +3,7 @@
     notesCoverSetExternal,
     notesCoverRemove,
   } from "$lib/notes-bridge";
+import { t } from "$lib/i18n";
 
   type Props = {
     open: boolean;
@@ -30,7 +31,7 @@
     const url = urlDraft.trim();
     if (!url) return;
     if (!/^https?:\/\//i.test(url)) {
-      error = "URL precisa começar com http:// ou https://";
+      error = $t("study.notes.nb.cover_url_error");
       return;
     }
     busy = true;
@@ -71,10 +72,10 @@
     }}
   >
     <div class="modal" role="dialog" aria-label="Cover image">
-      <h3>Capa da página</h3>
+      <h3>{$t("study.notes.cover.title")}</h3>
 
       <p class="hint">
-        Cole uma URL externa (https://...). Upload local de arquivo entra em sessão futura.
+        {$t("study.notes.cover.hint")}
       </p>
 
       <label class="field">
@@ -148,7 +149,7 @@
     width: 100%;
     max-width: 520px;
     background: var(--surface);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     padding: 20px;
     display: flex;
@@ -175,7 +176,7 @@
   }
   .field input {
     padding: 8px 10px;
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     background: var(--bg);
     color: var(--text);
@@ -187,7 +188,7 @@
     border-color: var(--accent);
   }
   .preview {
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     overflow: hidden;
     background: var(--bg);
@@ -203,7 +204,7 @@
   }
   .error-msg {
     margin: 0;
-    color: var(--error, #e74c3c);
+    color: var(--error);
     font-size: 12px;
   }
   footer {

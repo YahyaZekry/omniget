@@ -33,6 +33,146 @@ pub struct AppSettings {
     pub league: LeagueSettings,
     #[serde(default)]
     pub accessibility: AccessibilitySettings,
+    #[serde(default)]
+    pub omnidisc: OmnidiscSettings,
+    #[serde(default)]
+    pub world: WorldSettings,
+    #[serde(default)]
+    pub llm: LlmSettings,
+}
+
+/// Settings of the `/llm` section that are not per-agent.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LlmSettings {
+    /// Context pruning master switch. Off: the Coordinator keeps a disabled
+    /// pruner and nothing is judged or rewritten.
+    #[serde(default)]
+    pub prune_enabled: bool,
+    /// `"local"` (offline MiniLM) or `"jev"` (TypeSafe System One). Anything
+    /// unknown parses as local, so a typo never sends spans to a third party.
+    /// The Jev key is not here: it lives in the secret store.
+    #[serde(default = "default_prune_judge")]
+    pub prune_judge: String,
+    /// Conversation size (estimated tokens) under which nothing is judged.
+    /// The ported default suits cloud models; a small local context wants less.
+    #[serde(default = "default_prune_min_tokens")]
+    pub prune_min_tokens: u32,
+}
+
+fn default_prune_min_tokens() -> u32 {
+    50_000
+}
+
+fn default_prune_judge() -> String {
+    "local".into()
+}
+
+impl Default for LlmSettings {
+    fn default() -> Self {
+        Self {
+            prune_enabled: false,
+            prune_judge: default_prune_judge(),
+            prune_min_tokens: default_prune_min_tokens(),
+        }
+    }
+}
+
+/// Settings of the agents' world (`/world`). Phase 6 only carries the render
+/// tier: `tier_override` pins a tier by hand (None = automatic, i.e. measured),
+/// and the `tier_measured*` trio is the last calibration, kept so the UI can show
+/// it and so a version change can trigger a recalibration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorldSettings {
+    /// Shows `/world` in the navigation.
+    #[serde(default = "default_world_enabled")]
+    pub enabled: bool,
+    #[serde(default)]
+    pub tier_override: Option<u8>,
+    #[serde(default)]
+    pub tier_measured: Option<u8>,
+    #[serde(default)]
+    pub measured_median_ms: Option<f64>,
+    #[serde(default)]
+    pub measured_app_version: Option<String>,
+    /// Lets the agents in the house think through the LLM stack (plan, reflect).
+    /// Off by default: it is the only part of the world that spends tokens.
+    #[serde(default)]
+    pub thinking: bool,
+    /// Minimum real seconds between two thoughts in the whole house.
+    #[serde(default = "default_think_interval_s")]
+    pub think_interval_s: u32,
+    /// Room server for open houses and visits (`wss://host/v1/room`). Empty =
+    /// the built-in default; a self-hosted `omniworld-server` goes here.
+    #[serde(default)]
+    pub room_server: String,
+}
+
+fn default_world_enabled() -> bool {
+    true
+}
+
+fn default_think_interval_s() -> u32 {
+    120
+}
+
+impl Default for WorldSettings {
+    fn default() -> Self {
+        Self {
+            enabled: default_world_enabled(),
+            tier_override: None,
+            tier_measured: None,
+            measured_median_ms: None,
+            measured_app_version: None,
+            thinking: false,
+            think_interval_s: default_think_interval_s(),
+            room_server: String::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct OmnidiscSettings {
+    #[serde(default)]
+    pub voice: OmnidiscVoiceSettings,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OmnidiscVoiceSettings {
+    #[serde(default)]
+    pub ptt_key: String,
+    #[serde(default = "default_true")]
+    pub noise_suppression: bool,
+    #[serde(default)]
+    pub input_device: Option<String>,
+    #[serde(default)]
+    pub output_device: Option<String>,
+    #[serde(default = "default_vad_threshold_db")]
+    pub vad_threshold_db: f32,
+    /// How much of everyone else's audio to duck while you speak, 0-100 %.
+    #[serde(default)]
+    pub ducking_percent: u8,
+    /// Force every connection through a TURN relay so the other side never
+    /// learns your IP. Needs a TURN server on the instance.
+    #[serde(default)]
+    pub relay_only: bool,
+}
+
+impl Default for OmnidiscVoiceSettings {
+    fn default() -> Self {
+        Self {
+            ptt_key: String::new(),
+            noise_suppression: true,
+            input_device: None,
+            output_device: None,
+            vad_threshold_db: default_vad_threshold_db(),
+            ducking_percent: 0,
+            relay_only: false,
+        }
+    }
+}
+
+fn default_vad_threshold_db() -> f32 {
+    -45.0
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -85,6 +225,31 @@ pub struct LeagueSettings {
     pub pick_champions: Vec<i64>,
     #[serde(default)]
     pub ban_champions: Vec<i64>,
+    /// Auto-pick ignores the list and locks a random legal champion instead.
+    #[serde(default)]
+    pub pick_random: bool,
+    /// Rolls a random owned skin (and chroma) the moment a champion is locked.
+    #[serde(default)]
+    pub skin_roulette: bool,
+    #[serde(default)]
+    pub skin_roulette_include_base: bool,
+    /// Rolls a random owned ward skin on lock-in.
+    #[serde(default)]
+    pub ward_roulette: bool,
+    /// Falls back to the client's backend (SGP) when the local history is thin.
+    #[serde(default = "default_sgp_enabled")]
+    pub sgp_enabled: bool,
+    /// Tone of the AI coach: "objective", "roast" or "praise".
+    #[serde(default = "default_coach_style")]
+    pub coach_style: String,
+}
+
+fn default_sgp_enabled() -> bool {
+    true
+}
+
+fn default_coach_style() -> String {
+    "objective".to_string()
 }
 
 fn default_league_enabled() -> bool {
@@ -117,6 +282,12 @@ impl Default for LeagueSettings {
             auto_message: String::new(),
             pick_champions: Vec::new(),
             ban_champions: Vec::new(),
+            pick_random: false,
+            skin_roulette: false,
+            skin_roulette_include_base: false,
+            ward_roulette: false,
+            sgp_enabled: default_sgp_enabled(),
+            coach_style: default_coach_style(),
         }
     }
 }
@@ -179,6 +350,8 @@ pub struct DownloadSettings {
     pub embed_metadata: bool,
     #[serde(default = "default_true")]
     pub embed_thumbnail: bool,
+    #[serde(default)]
+    pub write_nfo_sidecar: bool,
     #[serde(default)]
     pub clipboard_detection: bool,
     #[serde(default)]
@@ -545,10 +718,26 @@ impl Default for TypographySettings {
     }
 }
 
+impl AppSettings {
+    /// One-time upgrades of a stored settings file. Returns true when
+    /// something changed and the file should be written back.
+    ///
+    /// v2 (0.10.0): the World left the experimental flag. Installs from before
+    /// have `world.enabled: false` on disk and would never see `/world`.
+    pub fn migrate(&mut self) -> bool {
+        if self.schema_version >= 2 {
+            return false;
+        }
+        self.world.enabled = true;
+        self.schema_version = 2;
+        true
+    }
+}
+
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            schema_version: 1,
+            schema_version: 2,
             appearance: AppearanceSettings {
                 theme: "system".into(),
                 language: "en".into(),
@@ -562,6 +751,7 @@ impl Default for AppSettings {
                 download_descriptions: true,
                 embed_metadata: true,
                 embed_thumbnail: true,
+                write_nfo_sidecar: false,
                 clipboard_detection: false,
                 auto_download_on_paste: false,
                 filename_template: default_filename_template(),
@@ -638,6 +828,9 @@ impl Default for AppSettings {
             bridge: BridgeSettings::default(),
             league: LeagueSettings::default(),
             accessibility: AccessibilitySettings::default(),
+            omnidisc: OmnidiscSettings::default(),
+            world: WorldSettings::default(),
+            llm: LlmSettings::default(),
         }
     }
 }
@@ -645,6 +838,21 @@ impl Default for AppSettings {
 #[cfg(test)]
 mod backcompat_tests {
     use super::*;
+
+    #[test]
+    fn an_install_from_before_the_world_gets_it_switched_on_once() {
+        let mut old = AppSettings {
+            schema_version: 1,
+            ..AppSettings::default()
+        };
+        old.world.enabled = false;
+        assert!(old.migrate());
+        assert!(old.world.enabled);
+        // The user's later choice is theirs: no second migration.
+        old.world.enabled = false;
+        assert!(!old.migrate());
+        assert!(!old.world.enabled);
+    }
 
     #[test]
     fn settings_da_v0_7_6_carregam_com_tls_verificado() {

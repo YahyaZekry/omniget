@@ -1,11 +1,12 @@
 <script lang="ts">
   import { docksStore, DOCK_META, type DockIconKey } from "$lib/study-notes/docks-store.svelte";
+import { t } from "$lib/i18n";
   import type { DockPosition } from "$lib/notes-bridge";
 
   type Props = { side: "left" | "right" };
   let { side }: Props = $props();
 
-  const sideAsPos = $derived<DockPosition>(side);
+  const sideAsPos = $derived(side);
 
   const items = $derived(
     DOCK_META.filter((m) => {
@@ -50,7 +51,7 @@
       class="icon-btn"
       class:active={isVisible(item.id)}
       onclick={() => toggle(item.id)}
-      title="{item.label} ({isVisible(item.id) ? 'visível' : 'oculto'})"
+      title={$t("study.notes.nb.sidebar_hint", { label: item.label, state: isVisible(item.id) ? $t("study.notes.nb.visible") : $t("study.notes.nb.hidden") })}
       aria-pressed={isVisible(item.id)}
       aria-label={item.label}
     >
@@ -83,10 +84,10 @@
     background: color-mix(in oklab, var(--surface-bg, var(--primary)) 60%, transparent);
   }
   .nb-dock-sidebar[data-side="left"] {
-    border-right: 1px solid color-mix(in oklab, var(--content-border) 30%, transparent);
+    border-right: none;
   }
   .nb-dock-sidebar[data-side="right"] {
-    border-left: 1px solid color-mix(in oklab, var(--content-border) 30%, transparent);
+    border-left: none;
   }
   .icon-btn {
     width: 26px;

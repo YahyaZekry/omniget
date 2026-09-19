@@ -223,14 +223,14 @@
         showToast(
           "ok",
           r.probed === 1
-            ? "1 duração detectada"
-            : `${r.probed} durações detectadas`,
+            ? $t("study.course.dur_one", { n: 1 })
+            : $t("study.course.durations_probed", { n: r.probed }),
         );
         await load();
       } else if (r.failed > 0 && r.probed === 0) {
-        showToast("err", "ffprobe falhou — verifique se está instalado");
+        showToast("err", $t("study.course.ffprobe_failed"));
       } else {
-        showToast("ok", "Tudo já tinha duração");
+        showToast("ok", $t("study.course.durations_all_set"));
       }
     } catch (e) {
       showToast("err", e instanceof Error ? e.message : String(e));
@@ -473,7 +473,7 @@
       </section>
 
       <section class="meta-subjects">
-        <h3>Matérias</h3>
+        <h3>{$t("study.course.subjects")}</h3>
         <div class="chip-row">
           {#each courseSubjects as subj (subj.id)}
             <span
@@ -489,13 +489,13 @@
             class="subj-edit"
             onclick={() => (subjectsModalOpen = true)}
           >
-            {courseSubjects.length === 0 ? "+ Atribuir matérias" : "Editar"}
+            {courseSubjects.length === 0 ? $t("study.course.assign_subjects") : $t("study.common.edit")}
           </button>
         </div>
       </section>
 
       <section class="meta-actions">
-        <h3>Ações</h3>
+        <h3>{$t("study.course.actions")}</h3>
         <div class="action-row">
           <button
             type="button"
@@ -505,7 +505,7 @@
           >
             <span aria-hidden="true">⏱</span>
             <span>
-              {probing ? "Detectando…" : "Detectar durações (ffprobe)"}
+              {probing ? $t("study.course.detecting") : $t("study.course.detect_durations")}
             </span>
             {#if totalDurationMs > 0}
               <span class="action-meta">total: {fmtDuration(totalDurationMs)}</span>
@@ -514,10 +514,10 @@
         </div>
         {#if probeReport}
           <p class="report">
-            ✓ {probeReport.probed} probadas
-            · {probeReport.skipped} já tinham
-            · {probeReport.failed} falharam
-            (de {probeReport.total_lessons} aulas)
+            ✓ {$t("study.course.probe_ok", { n: probeReport.probed })}
+            · {$t("study.course.probe_skipped", { n: probeReport.skipped })}
+            · {$t("study.course.probe_failed", { n: probeReport.failed })}
+            ({$t("study.course.probe_of", { n: probeReport.total_lessons })})
           </p>
         {/if}
       </section>
@@ -681,7 +681,7 @@
     onClose={() => (subjectsModalOpen = false)}
     onSaved={() => {
       void loadCourseSubjects();
-      showToast("ok", "Matérias atualizadas");
+      showToast("ok", $t("study.course.subjects_updated"));
     }}
   />
 
@@ -692,7 +692,7 @@
   {/if}
 
   {#if selectedLessons.size > 0}
-    <div class="selection-bar" role="toolbar" aria-label="Ações em massa">
+    <div class="selection-bar" role="toolbar" aria-label={$t("study.anki.browse.bulk_aria")}>
       <span class="sel-count">
         <strong>{selectedLessons.size}</strong>
         {selectedLessons.size === 1 ? "selecionada" : "selecionadas"}
@@ -720,7 +720,7 @@
     position: relative;
     padding: 16px 20px;
     background: var(--surface);
-    border: 1px solid color-mix(in oklab, var(--input-border) 40%, transparent);
+    border: none;
     border-radius: var(--border-radius, 10px);
     margin-bottom: 16px;
     max-height: 180px;
@@ -784,7 +784,7 @@
   .meta-actions {
     padding: 14px 16px;
     background: var(--surface);
-    border: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border: none;
     border-radius: var(--border-radius);
     display: flex;
     flex-direction: column;
@@ -821,7 +821,7 @@
   .subj-edit {
     padding: 4px 10px;
     border-radius: 999px;
-    border: 1px dashed color-mix(in oklab, var(--input-border) 80%, transparent);
+    border: none;
     background: transparent;
     color: var(--accent);
     font-size: 12px;
@@ -871,8 +871,7 @@
     flex: 1;
     min-width: 140px;
     padding: 4px 10px;
-    border: 1px dashed
-      color-mix(in oklab, var(--input-border) 80%, transparent);
+    border: none;
     border-radius: 999px;
     background: transparent;
     color: var(--text);
@@ -901,7 +900,7 @@
     gap: 4px;
     padding: 2px 8px;
     border-radius: 999px;
-    border: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border: none;
     background: transparent;
     color: var(--secondary);
     font: inherit;
@@ -928,7 +927,7 @@
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    border: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border: none;
     border-radius: var(--border-radius);
     background: transparent;
     color: var(--text);
@@ -1008,7 +1007,7 @@
   .sel-btn {
     padding: 6px 12px;
     border-radius: 999px;
-    border: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border: none;
     background: transparent;
     color: var(--text);
     font: inherit;
@@ -1111,7 +1110,7 @@
   .lsearch {
     flex: 1;
     background: var(--input-bg);
-    border: 1px solid var(--input-border);
+    border: none;
     color: var(--secondary);
     padding: 8px 12px;
     border-radius: var(--border-radius);
@@ -1129,7 +1128,7 @@
   }
   .module {
     background: var(--button-elevated);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     overflow: hidden;
   }
@@ -1184,7 +1183,7 @@
     align-items: center;
     gap: var(--padding);
     padding: 8px calc(var(--padding) * 1.5);
-    border-top: 1px solid var(--input-border);
+    border-top: none;
     transition: background 150ms ease;
   }
   .lesson-row:hover {

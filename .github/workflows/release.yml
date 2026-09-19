@@ -17,8 +17,16 @@ jobs:
             args: '--target aarch64-apple-darwin'
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
+          # Ubuntu 22.04 keeps the x86_64 build on glibc 2.35, which is what
+          # lets the AppImage run on older distros. Its PipeWire headers
+          # (0.3.48) are too old for the screen-capture backend to compile, so
+          # that one feature is left out and the client says so at runtime.
+          # The `--` is required: the Tauri CLI forwards what follows it to
+          # cargo, and rejects the flag otherwise. Only the app's default
+          # feature (`linux-capture`) is dropped; `rnnoise` stays because the
+          # dependency declaration asks for it by name.
           - platform: 'ubuntu-22.04'
-            args: ''
+            args: '-- --no-default-features'
           - platform: 'ubuntu-24.04-arm'
             args: ''
           - platform: 'windows-latest'
@@ -33,7 +41,7 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'ubuntu-24.04-arm'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libasound2-dev libpipewire-0.3-dev clang libclang-dev patchelf xdg-utils
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -67,7 +75,7 @@ jobs:
           LDAI_UPDATE_INFORMATION: ${{ contains(matrix.platform, 'ubuntu') && 'gh-releases-zsync|tonhowtf|omniget|latest|*AppImage.zsync' || '' }}
           # linuxdeploy bundles an old `strip` that fails on modern .relr.dyn
           # relocations; disable stripping so AppImage bundling succeeds.
-          NO_STRIP: '1'
+          NO_STRIP: ${{ contains(matrix.platform, 'ubuntu') && '1' || '' }}
           NODE_OPTIONS: --max-old-space-size=6144
         with:
           tagName: v__VERSION__

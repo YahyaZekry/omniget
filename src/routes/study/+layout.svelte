@@ -6,6 +6,7 @@
   import { pluginInvoke } from "$lib/plugin-invoke";
   import { rpcSetSource, rpcClearSource } from "$lib/rpc";
   import { t } from "$lib/i18n";
+  import { setToolbar } from "$lib/stores/toolbar-store.svelte";
   import {
     onGamificationToast,
     type GamificationToast,
@@ -148,7 +149,7 @@
     const labels: Record<string, string> = {
       "pomodoro-25": "Pomodoro 25",
       "deep-50": "Deep Work 50",
-      "stopwatch": "Cronômetro",
+      "stopwatch": $t("study.misc.stopwatch"),
     };
     return labels[presetId] ?? presetId;
   }
@@ -308,7 +309,7 @@
   }
 
   async function actionCreatePage() {
-    const name = window.prompt("Nome da nova página:");
+    const name = window.prompt($t("study.notes.new_page_prompt"));
     if (!name || !name.trim()) return;
     try {
       const r = await (
@@ -746,6 +747,19 @@
       }
     }
   });
+
+  // The study sections live in the window toolbar (segmented control), like
+  // Finder's view switcher. The in-page nav below stays as the narrow-window
+  // fallback and for keyboard users.
+  $effect(() => {
+    const path = $page.url.pathname;
+    const active = SUBNAV.find((item) => isActive(item, path));
+    return setToolbar({
+      segments: SUBNAV.map((item) => ({ id: item.href, label: $t(item.labelKey) as string })),
+      activeSegment: active?.href,
+      onSegment: (href) => { void goto(href); },
+    });
+  });
 </script>
 
 <nav class="subnav" aria-label="study sections">
@@ -1084,8 +1098,7 @@
             ></div>
           </div>
           <span class="palette-hint"
-            >{xpState.level_progress_pct}% até L{xpState.level + 1} ·
-            {xpState.xp_to_next} XP</span
+            >{$t("study.layout.palette_hint", { pct: xpState.level_progress_pct, lvl: xpState.level + 1, xp: xpState.xp_to_next })}</span
           >
         </footer>
       {/if}
@@ -1108,7 +1121,7 @@
     width: min(600px, 90vw);
     max-height: 70vh;
     background: var(--button-elevated);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
     display: flex;
@@ -1118,7 +1131,7 @@
   .palette input {
     background: transparent;
     border: none;
-    border-bottom: 1px solid var(--input-border);
+    border-bottom: none;
     color: var(--secondary);
     padding: 14px 16px;
     font-size: 15px;
@@ -1128,7 +1141,7 @@
     display: flex;
     gap: 4px;
     padding: 6px 6px 0;
-    border-bottom: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border-bottom: none;
   }
   .palette-tab {
     padding: 6px 12px;
@@ -1211,7 +1224,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    border-top: 1px solid var(--input-border);
+    border-top: none;
     padding: 8px 14px;
     font-size: 11px;
     color: var(--tertiary);
@@ -1231,7 +1244,7 @@
   }
   .palette-bar-fill {
     height: 100%;
-    background: var(--accent, #4a9eff);
+    background: var(--accent);
     transition: width 0.2s ease;
   }
   @media (prefers-reduced-motion: reduce) {
@@ -1245,17 +1258,23 @@
   }
 
   .subnav {
-    display: flex;
-    gap: 0.25rem;
-    padding: 0.5rem 0 1rem;
+    display: none;
+    gap: 2px;
+    padding: var(--space-3) var(--space-4) 0;
     margin: 0 auto;
     max-width: 960px;
     width: 100%;
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    border-bottom: 1px solid color-mix(in oklab, var(--content-border) 50%, transparent);
-    margin-bottom: calc(var(--padding) * 2);
+    border-bottom: none;
+  }
+
+  /* narrow windows: the toolbar hides its centre, so the tabs come back here */
+  @media (max-width: 980px) {
+    .subnav {
+      display: flex;
+    }
   }
   .subnav::-webkit-scrollbar {
     display: none;

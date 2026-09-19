@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
+import { t } from "$lib/i18n";
 
   type Props = {
     source: string;
@@ -116,7 +117,7 @@
       CompressionStream?: new (format: string) => GenericTransformStream;
     };
     if (!G.CompressionStream) {
-      throw new Error("CompressionStream indisponível neste runtime");
+      throw new Error($t("study.notes.nb.compression_unavailable"));
     }
     const ds = new G.CompressionStream("deflate-raw");
     const stream = new Blob([text]).stream().pipeThrough(ds);
@@ -210,7 +211,7 @@
       type="button"
       class="puml-toggle"
       onclick={toggleMode}
-      title={mode === "render" ? "Editar source" : "Voltar pro diagrama"}
+      title={mode === "render" ? $t("study.notes.nb.edit_source") : $t("study.notes.nb.back_to_diagram")}
     >
       {mode === "render" ? "‹/›" : "▶"}
     </button>
@@ -239,7 +240,7 @@
         <button
           type="button"
           class="puml-edit-btn"
-          onclick={toggleMode}>Editar source</button>
+          onclick={toggleMode}>{$t("study.notes.nb.edit_source")}</button>
         <button
           type="button"
           class="puml-remote-btn"
@@ -316,7 +317,7 @@
     font-size: 12px;
     line-height: 1.5;
     background: var(--surface);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     padding: 8px 10px;
     color: var(--text);
@@ -349,10 +350,10 @@
     flex-direction: column;
     gap: 6px;
     padding: 6px 8px;
-    background: color-mix(in oklab, var(--error, #e74c3c) 10%, transparent);
-    border: 1px solid color-mix(in oklab, var(--error, #e74c3c) 30%, transparent);
+    background: color-mix(in oklab, var(--error) 10%, transparent);
+    border: 1px solid color-mix(in oklab, var(--error) 30%, transparent);
     border-radius: var(--border-radius);
-    color: var(--error, #e74c3c);
+    color: var(--error);
   }
   .puml-error-msg {
     margin: 0;

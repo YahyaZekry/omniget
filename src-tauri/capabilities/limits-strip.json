@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "limits-strip",
+  "description": "Capability for the limits strip window (undecorated, transparent, always on top, pinned to a screen edge). Kept minimal: the strip drags itself and listens on `limits://state`, `limits://prefs` and `limits://chime`; sizing, parking and closing go through the limits_strip_* commands. Application commands are not gated by capabilities, but the event listener is, so `core:event:default` is spelled out here rather than inherited silently from `core:default`.",
+  "windows": ["limits-strip"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:window:allow-start-dragging"
+  ]
+}

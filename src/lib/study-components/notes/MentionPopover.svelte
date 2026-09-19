@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n";
   import type { MentionItem } from "./mention-suggestions";
 
   type Props = {
@@ -11,7 +12,7 @@
 
   let { items, selectedIndex, kind, position, onPick }: Props = $props();
 
-  const headerLabel = $derived(kind === "tag" ? "Tags" : "Páginas");
+  const headerLabel = $derived(kind === "tag" ? $t("study.notes.nb.mention_tags") : $t("study.notes.nb.mention_pages"));
 </script>
 
 {#if items.length > 0}
@@ -54,7 +55,7 @@
     max-height: 320px;
     overflow-y: auto;
     background: var(--surface);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     box-shadow: 0 12px 32px color-mix(in oklab, black 28%, transparent);
     padding: 4px;

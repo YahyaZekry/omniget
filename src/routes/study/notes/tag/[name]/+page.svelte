@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page as routePage } from "$app/stores";
+  import { t } from "$lib/i18n";
   import {
     notesPagesListByTag,
     notesPagesGetByName,
@@ -126,7 +127,7 @@
           >Editar →</a>
         </header>
         {#if descriptionBlocks.length === 0}
-          <p class="muted">Página de descrição existe mas está vazia.</p>
+          <p class="muted">{$t("study.notes.tag.desc_empty")}</p>
         {:else}
           <ul class="snippet-list">
             {#each flattenFirst(descriptionBlocks, 5) as n (n.id)}
@@ -139,8 +140,7 @@
       <section class="description description-empty">
         <h2>Sobre esta tag</h2>
         <p class="muted">
-          Não há página descritiva para <code>#{tagName}</code>. Crie uma para
-          documentar o conceito da tag.
+          {$t("study.notes.tag.no_desc_a")} <code>#{tagName}</code>{$t("study.notes.tag.no_desc_b")}
         </p>
         <button
           type="button"
@@ -148,14 +148,14 @@
           onclick={createDescription}
           disabled={creatingDescription}
         >
-          {creatingDescription ? "Criando…" : `Criar página #${tagName}`}
+          {creatingDescription ? $t("study.notes.creating") : $t("study.notes.create_tagged_page", { tag: tagName })}
         </button>
       </section>
     {/if}
 
     {#if pages.length > 0}
       <section class="pages">
-        <h2>Páginas com esta tag</h2>
+        <h2>{$t("study.notes.tag.pages_with")}</h2>
         <ul>
           {#each pages as p (p.id)}
             <li>
@@ -192,7 +192,7 @@
     {/if}
 
     {#if pages.length === 0 && blocksTagged.length === 0}
-      <p class="state">Sem páginas ou blocos com tag <code>#{tagName}</code>.</p>
+      <p class="state">{$t("study.notes.tag.none_a")} <code>#{tagName}</code>.</p>
     {/if}
   {/if}
 </div>
@@ -251,7 +251,7 @@
   .pages,
   .blocks {
     background: color-mix(in oklab, var(--input-border) 14%, transparent);
-    border: 1px solid color-mix(in oklab, var(--input-border) 50%, transparent);
+    border: none;
     border-radius: var(--border-radius);
     padding: 16px;
   }
@@ -307,7 +307,7 @@
     flex-direction: column;
     gap: 2px;
     padding: 10px 12px;
-    border: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border: none;
     border-radius: var(--border-radius);
     background: var(--surface);
     color: var(--text);

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { t } from "$lib/i18n";
   import { pluginInvoke } from "$lib/plugin-invoke";
   import PageHero from "$lib/study-components/PageHero.svelte";
   import ConfirmDialog from "$lib/study-components/ConfirmDialog.svelte";
@@ -154,7 +155,7 @@
       await pluginInvoke("study", "study:anki:deckconfig:update", {
         config: updated,
       });
-      showToast("ok", "Preset atualizado");
+      showToast("ok", $t("study.anki.preset_updated"));
       editing = null;
       editForm = null;
       await load();
@@ -200,7 +201,7 @@
 <section class="study-page">
   <PageHero
     title="Presets de deck"
-    subtitle="Configurações reutilizáveis (limites, FSRS, learning steps)"
+    subtitle={$t("study.anki.presets.subtitle")}
   />
 
   {#if toast}
@@ -227,17 +228,17 @@
       onclick={create}
       disabled={creating || !createName.trim()}
     >
-      {creating ? "Criando…" : "Criar preset"}
+      {creating ? $t("study.anki.presets.creating") : $t("study.anki.presets.create")}
     </button>
   </div>
 
   {#if loading}
-    <div class="state">Carregando…</div>
+    <div class="state">{$t("study.common.loading")}</div>
   {:else if error}
     <div class="state err">{error}</div>
   {:else if summaries.length === 0}
     <div class="empty">
-      <p>Nenhum preset ainda.</p>
+      <p>{$t("study.anki.presets.none_yet")}</p>
     </div>
   {:else}
     <ul class="preset-list">
@@ -247,7 +248,7 @@
             <div class="preset-name">
               {p.name}
               {#if p.id === DEFAULT_PRESET_ID}
-                <span class="badge">padrão</span>
+                <span class="badge">{$t("study.anki.presets.default_badge")}</span>
               {/if}
             </div>
             <div class="preset-meta">
@@ -269,7 +270,7 @@
               onclick={() => askDelete(p)}
               disabled={p.id === DEFAULT_PRESET_ID || p.use_count > 0}
               title={p.id === DEFAULT_PRESET_ID
-                ? "Preset padrão não pode ser apagado"
+                ? $t("study.anki.presets.default_undeletable")
                 : p.use_count > 0
                   ? "Mover decks pra outro preset antes de apagar"
                   : ""}
@@ -290,7 +291,7 @@
     onclick={(e) => { if (e.target === e.currentTarget) editing = null; }}
   >
     <div class="modal modal-wide" role="dialog" aria-modal="true">
-      <h3>Editar preset · {editing.name}</h3>
+      <h3>{$t("study.anki.presets.edit_title", { name: editing.name })}</h3>
 
       <div class="form-grid">
         <label class="field">
@@ -310,7 +311,7 @@
           />
         </label>
         <label class="field">
-          <span>Retenção desejada (FSRS)</span>
+          <span>{$t("study.anki.presets.retention")}</span>
           <input
             type="number"
             step="0.01"
@@ -357,7 +358,7 @@
         </label>
         <label class="check">
           <input type="checkbox" bind:checked={editForm.disable_autoplay} />
-          <span>Desativar autoplay de mídia</span>
+          <span>{$t("study.anki.presets.disable_media_autoplay")}</span>
         </label>
         <label class="check">
           <input type="checkbox" bind:checked={editForm.show_timer} />
@@ -389,11 +390,11 @@
 
 <ConfirmDialog
   bind:open={confirmDeleteOpen}
-  title="Apagar preset"
+  title={$t("study.anki.presets.delete_title")}
   message={deleteTarget
-    ? `Apagar o preset "${deleteTarget.name}"? Decks que usam vão pro preset padrão.`
+    ? $t("study.anki.presets.delete_confirm", { name: deleteTarget.name })
     : ""}
-  confirmLabel="Apagar"
+  confirmLabel={$t("study.common.delete")}
   variant="danger"
   onConfirm={confirmDelete}
 />
@@ -429,7 +430,7 @@
   .name-input {
     flex: 1;
     padding: 8px 12px;
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     background: var(--bg);
     color: var(--text);
@@ -470,7 +471,7 @@
     justify-content: space-between;
     gap: 12px;
     padding: 12px 16px;
-    border: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border: none;
     border-radius: var(--border-radius);
     background: var(--surface);
   }
@@ -564,7 +565,7 @@
   }
   .modal {
     background: var(--popup-bg, var(--surface));
-    border: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border: none;
     border-radius: var(--border-radius);
     padding: 20px;
     max-width: 540px;
@@ -590,7 +591,7 @@
   }
   .field input {
     padding: 7px 10px;
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     background: var(--bg);
     color: var(--text);
@@ -601,7 +602,7 @@
   .field input:focus { outline: none; border-color: var(--accent); }
 
   .check-group {
-    border: 1px solid color-mix(in oklab, var(--input-border) 50%, transparent);
+    border: none;
     border-radius: var(--border-radius);
     padding: 10px 14px 12px;
     margin: 0;
@@ -630,7 +631,7 @@
     display: flex;
     justify-content: flex-end;
     gap: 8px;
-    border-top: 1px solid color-mix(in oklab, var(--input-border) 40%, transparent);
+    border-top: none;
     padding-top: 12px;
   }
 </style>

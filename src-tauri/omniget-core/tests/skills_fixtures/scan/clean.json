@@ -1,0 +1,47 @@
+{
+  "skill": {
+    "name": "release-notes",
+    "source": "/tmp/omniget-skills/.staging-1/release-notes",
+    "scanned_at": "2026-09-18T12:00:00+00:00"
+  },
+  "risk_assessment": {
+    "score": 0,
+    "severity": "LOW",
+    "recommendation": "SAFE",
+    "max_issue_severity": "NONE"
+  },
+  "components": [
+    {
+      "path": "SKILL.md",
+      "type": "markdown",
+      "lines": 42,
+      "executable": false,
+      "size_bytes": 1204,
+      "source_url": null,
+      "source_identity": null,
+      "source_digest": null
+    }
+  ],
+  "structured_summaries": [],
+  "issues": [],
+  "suppressed_count": 0,
+  "suppressed": [],
+  "metadata": {
+    "has_executable_scripts": false,
+    "skillspector_version": "0.7.0",
+    "llm_requested": false,
+    "llm_available": false,
+    "meta_analysis_applied": false,
+    "filtering_mode": "heuristic",
+    "inference_usage": []
+  },
+  "execution_successful": true,
+  "analysis_completeness": {
+    "is_complete": true,
+    "total_components": 1,
+    "scanned_components": 1,
+    "coverage_percent": 100,
+    "entirely_uninspected_files": 0,
+    "ledger_exceptions": []
+  }
+}

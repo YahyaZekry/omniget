@@ -410,11 +410,11 @@
     border-radius: 50%;
   }
   .dot.saving {
-    background: var(--warning, #f59e0b);
+    background: var(--warning);
     animation: pulse 1.2s ease-in-out infinite;
   }
   .dot.saved {
-    background: var(--success, #16a34a);
+    background: var(--success);
   }
   .muted {
     color: var(--tertiary);
@@ -422,7 +422,7 @@
   .card {
     padding: 14px 16px;
     background: var(--surface);
-    border: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border: none;
     border-radius: var(--border-radius);
     display: flex;
     flex-direction: column;
@@ -460,7 +460,7 @@
   .row select {
     min-width: 200px;
     padding: 6px 8px;
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     background: var(--bg);
     color: var(--text);

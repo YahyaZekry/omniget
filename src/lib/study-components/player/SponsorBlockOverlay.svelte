@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n";
   import type { SponsorBlockSegment } from "$lib/study-bridge";
 
   type Props = {
@@ -17,16 +18,16 @@
     onDismiss,
   }: Props = $props();
 
-  const CATEGORY_LABELS: Record<string, string> = {
-    sponsor: "patrocinado",
-    selfpromo: "auto-promoção",
-    intro: "intro",
-    outro: "encerramento",
-    interaction: "pedido de interação",
-    preview: "prévia",
-    music_offtopic: "trecho não-musical",
-    filler: "enrolação",
-  };
+  const CATEGORY_LABELS = $derived<Record<string, string>>({
+    sponsor: $t("study.player.sponsor.sponsor"),
+    selfpromo: $t("study.player.sponsor.selfpromo"),
+    intro: $t("study.player.sponsor.intro"),
+    outro: $t("study.player.sponsor.outro"),
+    interaction: $t("study.player.sponsor.interaction"),
+    preview: $t("study.player.sponsor.preview"),
+    music_offtopic: $t("study.player.sponsor.music_offtopic"),
+    filler: $t("study.player.sponsor.filler"),
+  });
 
   let dismissed = $state<Set<string>>(new Set());
   let autoSkipped = $state<Set<string>>(new Set());
@@ -81,7 +82,7 @@
 {#if activeSegment && !autoSkip}
   <div class="sb-overlay" role="region" aria-label="SponsorBlock">
     <button type="button" class="skip-btn" onclick={handleSkip}>
-      <span>Pular {label(activeSegment.category)}</span>
+      <span>{$t("study.player.sponsor.skip", { cat: label(activeSegment.category) })}</span>
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <polyline points="13 17 18 12 13 7" />
         <polyline points="6 17 11 12 6 7" />

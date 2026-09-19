@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n";
   import { showToast } from "$lib/stores/toast-store.svelte";
   import {
     downloadStore,
@@ -14,23 +15,23 @@
   const drawerOpen = $derived(downloadStore.drawerOpen);
 
   function stageLabel(job: DownloadJobState): string {
-    if (job.error) return "Falhou";
-    if (job.stage === "pending") return "Aguardando…";
-    if (job.stage === "starting") return "Preparando…";
+    if (job.error) return $t("study.music.dock.failed");
+    if (job.stage === "pending") return $t("study.music.dock.pending");
+    if (job.stage === "starting") return $t("study.music.dock.preparing");
     if (job.stage === "downloading") {
       if (job.kind === "bulk") {
-        return `Baixando ${job.currentCount ?? 0}/${job.totalCount ?? 0}`;
+        return $t("study.music.dock.downloading", { a: job.currentCount ?? 0, b: job.totalCount ?? 0 });
       }
-      return "Salvando faixa…";
+      return $t("study.music.dock.saving_track");
     }
-    if (job.stage === "skipped") return "Já tinha";
+    if (job.stage === "skipped") return $t("study.music.dock.already_had");
     if (job.stage === "done") {
       if (job.kind === "bulk") {
         const ok = job.successCount ?? 0;
         const fail = job.failedCount ?? 0;
-        return `Pronto · ${ok} ok${fail > 0 ? ` · ${fail} falhou` : ""}`;
+        return $t("study.music.dock.done_bulk", { ok, fail });
       }
-      return "Pronto";
+      return $t("study.music.dock.done");
     }
     return job.stage;
   }
@@ -44,7 +45,7 @@
     const codec = getLastCodec() ?? "mp3";
     const dir = getLastDownloadDir();
     if (!dir) {
-      showToast("error", "Escolhe a pasta de novo no botão de baixar.");
+      showToast("error", $t("study.music.dock.pick_folder_again"));
       downloadStore.removeJob(job.id);
       return;
     }
@@ -77,7 +78,7 @@
     const codec = job.codec ?? getLastCodec() ?? "mp3";
     const dir = job.outputDir ?? getLastDownloadDir();
     if (!dir) {
-      showToast("error", "Escolhe a pasta de novo no botão de baixar.");
+      showToast("error", $t("study.music.dock.pick_folder_again"));
       return;
     }
     downloadStore.removeFailedTrackFromBulk(job.id, failed.id);
@@ -101,7 +102,7 @@
     const codec = job.codec ?? getLastCodec() ?? "mp3";
     const dir = job.outputDir ?? getLastDownloadDir();
     if (!dir) {
-      showToast("error", "Escolhe a pasta de novo no botão de baixar.");
+      showToast("error", $t("study.music.dock.pick_folder_again"));
       return;
     }
     const failed = downloadStore.consumeFailedTracks(job.id);
@@ -163,8 +164,8 @@
     class="fab"
     class:active={activeCount > 0}
     onclick={toggleDrawer}
-    aria-label={drawerOpen ? "Fechar downloads" : "Abrir downloads"}
-    title={drawerOpen ? "Fechar downloads" : "Downloads"}
+    aria-label={drawerOpen ? $t("study.music.dock.close_downloads") : $t("study.music.dock.open_downloads")}
+    title={drawerOpen ? $t("study.music.dock.close_downloads") : $t("study.music.dock.downloads")}
   >
     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -184,8 +185,8 @@
         Downloads <span class="muted">({jobs.length})</span>
       </span>
       <div class="head-actions">
-        <button type="button" class="link" onclick={clearDone}>Limpar concluídos</button>
-        <button type="button" class="close" onclick={toggleDrawer} aria-label="Fechar">×</button>
+        <button type="button" class="link" onclick={clearDone}>{$t("study.music.clear_done")}</button>
+        <button type="button" class="close" onclick={toggleDrawer} aria-label={$t("study.common.close")}>×</button>
       </div>
     </header>
 
@@ -227,7 +228,7 @@
                   aria-expanded={!!job.expanded}
                 >
                   <span class="chev" class:open={job.expanded}>▸</span>
-                  {failedList.length} {failedList.length === 1 ? "falhou" : "falharam"}
+                  {$t("study.music.dock.failed_count", { n: failedList.length })}
                 </button>
                 <button
                   type="button"
@@ -270,8 +271,8 @@
                 type="button"
                 class="ghost-btn"
                 onclick={() => openExternal(job.permalinkUrl)}
-                title="Abrir no SoundCloud"
-                aria-label="Abrir no SoundCloud"
+                title={$t("study.music.open_in_soundcloud")}
+                aria-label={$t("study.music.open_in_soundcloud")}
               >
                 ↗
               </button>
@@ -342,7 +343,7 @@
     width: min(420px, calc(100vw - 32px));
     max-height: min(70vh, 640px);
     background: rgba(20, 20, 20, 0.97);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: none;
     border-radius: 14px;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
     z-index: 109;
@@ -363,7 +364,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 14px 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: none;
   }
   .drawer-title { font-size: 13px; font-weight: 700; letter-spacing: 0.02em; }
   .muted { color: rgba(255, 255, 255, 0.5); font-weight: 500; }

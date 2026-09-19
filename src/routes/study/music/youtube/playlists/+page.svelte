@@ -160,7 +160,7 @@
     padding: 10px 18px;
     border-radius: 999px;
     background: var(--accent);
-    color: var(--on-accent, #000);
+    color: var(--on-accent);
     border: 0;
     font: inherit;
     font-size: 13px;
@@ -226,7 +226,7 @@
   }
   .modal {
     background: var(--background);
-    border: 1px solid color-mix(in oklab, var(--content-border) 60%, transparent);
+    border: none;
     border-radius: 16px;
     padding: 22px;
     width: min(420px, 100%);
@@ -241,7 +241,7 @@
   .modal textarea {
     padding: 9px 12px;
     border-radius: 8px;
-    border: 1px solid color-mix(in oklab, var(--content-border) 50%, transparent);
+    border: none;
     background: color-mix(in oklab, var(--button) 30%, transparent);
     color: var(--secondary);
     font: inherit;
@@ -269,7 +269,7 @@
   }
   .primary {
     background: var(--accent);
-    color: var(--on-accent, #000);
+    color: var(--on-accent);
   }
   .primary:disabled,
   .ghost:disabled {

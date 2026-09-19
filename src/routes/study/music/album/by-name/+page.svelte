@@ -26,7 +26,7 @@
 
   async function load() {
     if (!albumName) {
-      error = "Álbum não especificado.";
+      error = $t("study.music.album.not_specified");
       loading = false;
       return;
     }
@@ -64,7 +64,7 @@
   {#if loading}
     <p class="muted">{$t("study.common.loading")}</p>
   {:else if error || !album}
-    <p class="error">{error ?? "Álbum não encontrado."}</p>
+    <p class="error">{error ?? $t("study.music.album.not_found")}</p>
   {:else}
     <AlbumHero {album} {tracks} />
     {#if tracks.length === 0}
@@ -83,5 +83,5 @@
   .album-page { display: flex; flex-direction: column; gap: 12px; }
   .track-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
   .muted { color: var(--tertiary); font-size: 13px; }
-  .error { color: var(--error, #dc2626); font-size: 13px; }
+  .error { color: var(--error); font-size: 13px; }
 </style>

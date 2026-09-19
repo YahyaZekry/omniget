@@ -1,5 +1,6 @@
 <script lang="ts">
   import { studyPlayerSeekHeatmap, type SeekHeatmap } from "$lib/study-bridge";
+  import { t } from "$lib/i18n";
 
   type Props = {
     lessonId: number;
@@ -41,14 +42,14 @@
 </script>
 
 {#if !loading && !error && showPanel && heatmap}
-  <section class="heat" aria-label="Análise de seeks na aula">
+  <section class="heat" aria-label={$t("study.player.seek_analysis")}>
     <header class="head">
-      <span class="eyebrow">Análise</span>
-      <h3>Distribuição de retornos</h3>
-      <span class="count">{heatmap.total_seeks} seeks</span>
+      <span class="eyebrow">{$t("study.player.seek_eyebrow")}</span>
+      <h3>{$t("study.player.seek_dist_title")}</h3>
+      <span class="count">{$t("study.player.seek_count", { n: heatmap.total_seeks })}</span>
     </header>
     <p class="hint">
-      Cada barra representa 10 segundos. Barras altas indicam onde você (ou outros) voltaram mais — provavelmente trecho mais difícil.
+      {$t("study.player.seek_dist_hint")}
     </p>
     <div class="track" role="img" aria-label="Heatmap de seeks">
       <svg viewBox="0 0 {Math.max(heatmap.buckets.length, 1)} 40" preserveAspectRatio="none" width="100%" height="40">
@@ -76,7 +77,7 @@
     gap: 8px;
     padding: 14px 16px;
     background: color-mix(in oklab, var(--surface) 90%, var(--accent) 4%);
-    border: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border: none;
     border-radius: var(--border-radius, 8px);
     margin-top: 16px;
     color: var(--accent);

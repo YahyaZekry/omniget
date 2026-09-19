@@ -1,0 +1,16 @@
+data: {"id":"chatcmpl-B9kZ1","object":"chat.completion.chunk","created":1741569952,"model":"gpt-4o-mini-2024-07-18","system_fingerprint":"fp_0aa8d3e20b","choices":[{"index":0,"delta":{"role":"assistant","content":null,"tool_calls":[{"index":0,"id":"call_62136354","type":"function","function":{"name":"get_weather","arguments":""}}]},"logprobs":null,"finish_reason":null}],"usage":null}
+
+data: {"id":"chatcmpl-B9kZ1","object":"chat.completion.chunk","created":1741569952,"model":"gpt-4o-mini-2024-07-18","system_fingerprint":"fp_0aa8d3e20b","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\"loc"}}]},"logprobs":null,"finish_reason":null}],"usage":null}
+
+data: {"id":"chatcmpl-B9kZ1","object":"chat.completion.chunk","created":1741569952,"model":"gpt-4o-mini-2024-07-18","system_fingerprint":"fp_0aa8d3e20b","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"ation\":\""}}]},"logprobs":null,"finish_reason":null}],"usage":null}
+
+data: {"id":"chatcmpl-B9kZ1","object":"chat.completion.chunk","created":1741569952,"model":"gpt-4o-mini-2024-07-18","system_fingerprint":"fp_0aa8d3e20b","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"Rio de "}}]},"logprobs":null,"finish_reason":null}],"usage":null}
+
+data: {"id":"chatcmpl-B9kZ1","object":"chat.completion.chunk","created":1741569952,"model":"gpt-4o-mini-2024-07-18","system_fingerprint":"fp_0aa8d3e20b","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"Janeiro\"}"}}]},"logprobs":null,"finish_reason":null}],"usage":null}
+
+data: {"id":"chatcmpl-B9kZ1","object":"chat.completion.chunk","created":1741569952,"model":"gpt-4o-mini-2024-07-18","system_fingerprint":"fp_0aa8d3e20b","choices":[{"index":0,"delta":{},"logprobs":null,"finish_reason":"tool_calls"}],"usage":null}
+
+data: {"id":"chatcmpl-B9kZ1","object":"chat.completion.chunk","created":1741569952,"model":"gpt-4o-mini-2024-07-18","system_fingerprint":"fp_0aa8d3e20b","choices":[],"usage":{"prompt_tokens":76,"completion_tokens":17,"total_tokens":93}}
+
+data: [DONE]
+

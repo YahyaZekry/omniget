@@ -136,7 +136,7 @@
       );
       okMsg =
         r.removed === 0
-          ? "Cache já estava vazio"
+          ? $t("study.read.annas.cache_was_empty")
           : r.removed === 1
             ? "1 entrada de cache removida"
             : `${r.removed} entradas de cache removidas`;
@@ -293,10 +293,9 @@
     </section>
 
     <section class="block">
-      <h3>Cache de busca</h3>
+      <h3>{$t("study.read.annas.cache_title")}</h3>
       <p class="muted small">
-        Resultados são guardados em memória pra não bombardear os mirrors.
-        Limpe se você está vendo dados desatualizados.
+        {$t("study.read.annas.cache_hint")}
       </p>
       <button
         type="button"
@@ -323,9 +322,9 @@
             aria-hidden="true"
           ></span>
           <span>
-            {browserStatus.enabled ? "Habilitado" : "Desabilitado"}
+            {browserStatus.enabled ? $t("study.read.annas.enabled") : $t("study.read.annas.disabled")}
             {#if browserStatus.available === false}
-              · não detectado no sistema
+              {$t("study.read.annas.not_detected")}
             {/if}
           </span>
         </div>
@@ -419,7 +418,7 @@
     padding: 6px 10px;
     background: transparent;
     color: var(--tertiary);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     font-size: 12px;
     cursor: pointer;
@@ -462,7 +461,7 @@
   .block {
     padding: var(--padding);
     background: var(--button-elevated);
-    border: 1px solid var(--content-border);
+    border: none;
     border-radius: var(--border-radius);
     display: flex;
     flex-direction: column;
@@ -512,7 +511,7 @@
     padding: 8px 10px;
     background: var(--input-bg);
     color: var(--secondary);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     font-family: var(--font-mono, "IBM Plex Mono", monospace);
     font-size: 12px;
@@ -557,7 +556,7 @@
     padding: 8px 14px;
     background: transparent;
     color: var(--tertiary);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     font-size: 12px;
     cursor: pointer;
@@ -607,7 +606,7 @@
     max-height: 85vh;
     overflow-y: auto;
     background: var(--primary);
-    border: 1px solid var(--content-border);
+    border: none;
     border-radius: var(--border-radius);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
     z-index: 41;
@@ -616,7 +615,7 @@
   }
   .modal-head {
     padding: 16px 20px;
-    border-bottom: 1px solid var(--content-border);
+    border-bottom: none;
   }
   .modal-head h2 {
     margin: 0;
@@ -656,6 +655,6 @@
     justify-content: flex-end;
     gap: 8px;
     padding: 12px 20px;
-    border-top: 1px solid var(--content-border);
+    border-top: none;
   }
 </style>

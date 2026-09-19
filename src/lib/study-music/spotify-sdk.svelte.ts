@@ -1,3 +1,5 @@
+import { get } from "svelte/store";
+import { t } from "$lib/i18n";
 import { pluginInvoke } from "$lib/plugin-invoke";
 
 declare global {
@@ -121,17 +123,17 @@ class SpotifySdkController {
         const widevine = await this.checkWidevine();
         if (!widevine) {
           this.unavailableReason =
-            "Widevine DRM não está disponível neste sistema. Spotify playback nativo não vai funcionar — use a Fase 1 (transfer pra outro device).";
+            get(t)("study.music.sdk.widevine_unavailable");
           this.loading = false;
-          reject(new Error(this.unavailableReason));
+          reject(new Error(this.unavailableReason ?? ""));
           return;
         }
 
         const onSdkReady = () => {
           if (!window.Spotify) {
-            this.unavailableReason = "SDK do Spotify carregou mas Spotify global não foi exposto";
+            this.unavailableReason = get(t)("study.music.sdk.sdk_no_global");
             this.loading = false;
-            reject(new Error(this.unavailableReason));
+            reject(new Error(this.unavailableReason ?? ""));
             return;
           }
 
@@ -177,7 +179,7 @@ class SpotifySdkController {
           player.addListener(
             "account_error",
             ({ message }: { message: string }) => {
-              this.unavailableReason = `Spotify Premium é obrigatório (${message})`;
+              this.unavailableReason = get(t)("study.music.spotify.premium_required", { msg: message });
             },
           );
           player.addListener(
@@ -214,9 +216,9 @@ class SpotifySdkController {
           script.src = SDK_SCRIPT;
           script.async = true;
           script.onerror = () => {
-            this.unavailableReason = "Falha ao carregar SDK do Spotify (offline?)";
+            this.unavailableReason = get(t)("study.music.sdk.load_failed");
             this.loading = false;
-            reject(new Error(this.unavailableReason));
+            reject(new Error(this.unavailableReason ?? ""));
           };
           document.head.appendChild(script);
         }

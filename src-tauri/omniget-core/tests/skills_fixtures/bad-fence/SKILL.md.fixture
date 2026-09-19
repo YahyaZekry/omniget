@@ -1,0 +1,4 @@
+name: bad-fence
+description: There is no `---` fence at all, so this is plain Markdown and not a skill.
+
+# Bad fence

@@ -1,0 +1,16 @@
+: OPENROUTER PROCESSING
+
+data: {"id":"gen-1741569952-abc","provider":"Fireworks","model":"deepseek/deepseek-r1","object":"chat.completion.chunk","created":1741569952,"choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"The user"},"finish_reason":null,"native_finish_reason":null}]}
+
+data: {"id":"gen-1741569952-abc","provider":"Fireworks","model":"deepseek/deepseek-r1","object":"chat.completion.chunk","created":1741569952,"choices":[{"index":0,"delta":{"content":"","reasoning":" greets"},"finish_reason":null,"native_finish_reason":null}]}
+
+data: {"id":"gen-1741569952-abc","provider":"Fireworks","model":"deepseek/deepseek-r1","object":"chat.completion.chunk","created":1741569952,"choices":[{"index":0,"delta":{"content":"","reasoning":" me."},"finish_reason":null,"native_finish_reason":null}]}
+
+data: {"id":"gen-1741569952-abc","provider":"Fireworks","model":"deepseek/deepseek-r1","object":"chat.completion.chunk","created":1741569952,"choices":[{"index":0,"delta":{"content":"Hi","reasoning":null},"finish_reason":null,"native_finish_reason":null}]}
+
+data: {"id":"gen-1741569952-abc","provider":"Fireworks","model":"deepseek/deepseek-r1","object":"chat.completion.chunk","created":1741569952,"choices":[{"index":0,"delta":{"content":" there!"},"finish_reason":null,"native_finish_reason":null}]}
+
+data: {"id":"gen-1741569952-abc","provider":"Fireworks","model":"deepseek/deepseek-r1","object":"chat.completion.chunk","created":1741569952,"choices":[{"index":0,"delta":{},"finish_reason":"stop","native_finish_reason":"stop"}],"usage":{"prompt_tokens":12,"completion_tokens":21,"total_tokens":33,"cost":4.2e-05,"prompt_tokens_details":{"cached_tokens":0}}}
+
+data: [DONE]
+

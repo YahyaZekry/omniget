@@ -388,7 +388,7 @@
     gap: 18px;
     padding: 18px;
     background: color-mix(in oklab, var(--button) 25%, transparent);
-    border: 1px solid color-mix(in oklab, var(--content-border) 40%, transparent);
+    border: none;
     border-radius: 14px;
     transition: border-color 120ms;
   }
@@ -513,10 +513,10 @@
     font-weight: 600;
   }
   .expiry.stale {
-    color: #f4a72b;
+    color: var(--warning);
   }
   .expiry.expired {
-    color: #d33;
+    color: var(--danger);
   }
   .actions {
     display: flex;
@@ -541,7 +541,7 @@
   .ghost-btn {
     padding: 5px 12px;
     background: transparent;
-    border: 1px solid color-mix(in oklab, var(--content-border) 40%, transparent);
+    border: none;
     border-radius: 999px;
     color: var(--secondary);
     font-size: 12px;
@@ -553,8 +553,8 @@
     color: var(--accent);
   }
   .ghost-btn.danger:hover {
-    border-color: #d33;
-    color: #d33;
+    border-color: var(--danger);
+    color: var(--danger);
   }
   .status-dot {
     width: 8px;
@@ -563,16 +563,16 @@
     align-self: start;
     margin-top: 6px;
   }
-  .status-dot[data-state="fresh"] { background: #1DB954; }
-  .status-dot[data-state="aging"] { background: #f4a72b; }
-  .status-dot[data-state="stale"] { background: #d33; }
+  .status-dot[data-state="fresh"] { background: var(--success); }
+  .status-dot[data-state="aging"] { background: var(--warning); }
+  .status-dot[data-state="stale"] { background: var(--danger); }
   .status-dot[data-state="empty"] { background: var(--tertiary); opacity: 0.4; }
 
   .extra-accounts {
     list-style: none;
     margin: 8px 0 0;
     padding: 8px 0 0;
-    border-top: 1px dashed color-mix(in oklab, var(--content-border) 30%, transparent);
+    border-top: none;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -618,7 +618,7 @@
     height: 24px;
     padding: 0;
     background: transparent;
-    border: 1px solid color-mix(in oklab, var(--content-border) 30%, transparent);
+    border: none;
     border-radius: 6px;
     color: var(--tertiary);
     cursor: pointer;
@@ -632,8 +632,8 @@
     color: var(--accent);
   }
   .mini-btn.danger:hover {
-    border-color: #d33;
-    color: #d33;
+    border-color: var(--danger);
+    color: var(--danger);
   }
   .add-account-btn {
     margin-top: 8px;

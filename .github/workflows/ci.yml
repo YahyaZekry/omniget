@@ -24,7 +24,7 @@ jobs:
         if: matrix.platform == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libasound2-dev libpipewire-0.3-dev clang libclang-dev
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -54,6 +54,9 @@ jobs:
 
       - name: Test
         working-directory: src-tauri
+        # A hung test must fail with its log, not sit until the job is
+        # cancelled (a cancelled job keeps no log to read).
+        timeout-minutes: 30
         run: cargo test --workspace
 
   rust-debian:
@@ -74,6 +77,7 @@ jobs:
         run: |
           apt-get install -y --no-install-recommends \
             libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
+            libasound2-dev libpipewire-0.3-dev clang libclang-dev \
             patchelf xdg-utils
 
       - uses: dtolnay/rust-toolchain@stable
@@ -148,7 +152,7 @@ jobs:
         if: matrix.platform == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev xvfb
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libasound2-dev libpipewire-0.3-dev clang libclang-dev xvfb
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

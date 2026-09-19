@@ -1,0 +1,18 @@
+---
+name: metadata-skill
+description: >-
+  Exercises the folded block scalar, the nested metadata map and a YAML list of
+  tools, which are the three frontmatter shapes real skills use beyond plain
+  strings.
+compatibility: Requires nothing; it is a parser fixture.
+metadata:
+  author: omniget
+  version: "2.1"
+allowed-tools:
+  - Read
+  - Bash(jq:*)
+---
+
+# Metadata skill
+
+Nothing to do; this file exists to be parsed.

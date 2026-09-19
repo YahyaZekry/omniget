@@ -1459,13 +1459,13 @@
         });
         console.warn("[TG] diag_list_media:", diag);
         if (diag.get_history_error) {
-          mediaError = `Telegram negou acesso: ${diag.get_history_error}`;
+          mediaError = $t("study.telegram.browser.media_denied", { err: diag.get_history_error });
         } else if (diag.search_errors.length > 0) {
-          mediaError = `Telegram retornou erros nos filtros: ${diag.search_errors.join("; ")}. Possivelmente este channel é protegido (saving disabled) ou access_hash expirou. Tente sair e entrar novamente no chat pelo Telegram oficial.`;
+          mediaError = $t("study.telegram.browser.media_filter_errors", { errors: diag.search_errors.join("; ") });
         } else if (diag.get_history_count === 0 && diag.search_photo_count === 0 && diag.search_video_count === 0 && diag.search_document_count === 0) {
-          mediaError = "Channel parece não ter mídia acessível via API (broadcast protegido ou content sem media). Verifique no Telegram oficial se vê os videos.";
+          mediaError = $t("study.telegram.browser.media_error");
         } else if (diag.get_history_with_media === 0) {
-          mediaError = `Channel tem ${diag.get_history_count} mensagens mas nenhuma com mídia detectável. Verifique se as mensagens têm videos anexados (não apenas links).`;
+          mediaError = $t("study.telegram.browser.media_none_detectable", { n: diag.get_history_count });
         }
       } catch (e) {
         console.warn("[TG] diag_list_media failed:", e);
@@ -3500,7 +3500,7 @@
   .tg-mini-list {
     display: flex;
     flex-direction: column;
-    border-right: 1px solid var(--content-border);
+    border-right: none;
     background: color-mix(in oklab, var(--surface) 60%, transparent);
     max-height: calc(100vh - 140px);
     position: sticky;
@@ -3509,7 +3509,7 @@
   }
   .tg-mini-list-header {
     padding: 8px 10px;
-    border-bottom: 1px solid var(--content-border);
+    border-bottom: none;
     flex-shrink: 0;
   }
   .tg-mini-list-scroll {
@@ -3539,7 +3539,7 @@
   }
   .tg-mini-row.active {
     background: var(--accent);
-    color: white;
+    color: var(--on-accent);
   }
   .tg-mini-row.active .tg-mini-name {
     color: white;
@@ -3598,7 +3598,7 @@
     padding: 0 5px;
     border-radius: 9px;
     background: var(--accent);
-    color: white;
+    color: var(--on-accent);
     font-size: 10px;
     font-weight: 700;
     flex-shrink: 0;
@@ -3665,7 +3665,7 @@
     letter-spacing: 0.01em;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--content-border);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   }
   @keyframes date-divider-fade {
     from { opacity: 0; transform: translateY(-4px); }
@@ -4089,7 +4089,7 @@
     gap: 2px;
     overflow-x: auto;
     padding: 0 0 6px;
-    border-bottom: 1px solid var(--content-border);
+    border-bottom: none;
     scrollbar-width: none;
   }
   .chat-tabs::-webkit-scrollbar { display: none; }
@@ -4147,7 +4147,7 @@
   .chip {
     padding: 6px 14px;
     border-radius: var(--tg-radius-pill);
-    border: 1px solid var(--content-border);
+    border: none;
     background: var(--surface);
     color: var(--tertiary);
     font-family: inherit;
@@ -4372,7 +4372,7 @@
     height: 24px;
     border-radius: 50%;
     background: var(--accent);
-    color: white;
+    color: var(--on-accent);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -4429,7 +4429,7 @@
     padding: 1px 6px;
     border-radius: 4px;
     background: var(--accent);
-    color: white;
+    color: var(--on-accent);
     font-size: 9px;
     font-weight: 700;
     z-index: 2;
@@ -4449,7 +4449,7 @@
   }
   .action {
     background: transparent;
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     padding: 2px 8px;
     font-family: inherit;
@@ -4469,12 +4469,12 @@
     color: var(--tertiary);
   }
   .action.star.active {
-    color: var(--warning, #f59e0b);
-    border-color: var(--warning, #f59e0b);
+    color: var(--warning);
+    border-color: var(--warning);
   }
   .action.star:hover:not(:disabled) {
-    color: var(--warning, #f59e0b);
-    border-color: var(--warning, #f59e0b);
+    color: var(--warning);
+    border-color: var(--warning);
   }
   .search-input {
     flex: 1;
@@ -4482,7 +4482,7 @@
     padding: 8px 14px;
     background: var(--surface);
     color: var(--text);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--tg-radius-input);
     font-family: inherit;
     font-size: 13px;
@@ -4496,7 +4496,7 @@
   }
   .ghost-btn {
     background: transparent;
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     color: var(--secondary);
     font-family: inherit;
@@ -4514,8 +4514,8 @@
   }
   .favorites-card .avatar.fav {
     background: linear-gradient(135deg,
-      color-mix(in oklab, var(--warning, #f59e0b) 90%, white),
-      color-mix(in oklab, var(--warning, #f59e0b) 60%, black));
+      color-mix(in oklab, var(--warning) 90%, white),
+      color-mix(in oklab, var(--warning) 60%, black));
     color: #fff;
   }
   .smart-card .avatar.smart {
@@ -4594,7 +4594,7 @@
     gap: 6px;
     padding: 3px 10px;
     border-radius: 999px;
-    border: 1px solid var(--content-border);
+    border: none;
     background: var(--surface);
     font-size: 11px;
     color: var(--tertiary);
@@ -4613,13 +4613,13 @@
     border-color: color-mix(in oklab, var(--success) 30%, var(--content-border));
   }
   .status-pill[data-status="checking"] .status-dot {
-    background: var(--warning, #f59e0b);
+    background: var(--warning);
     animation: pulse 1.4s ease-in-out infinite;
   }
   .status-spinner {
     width: 12px;
     height: 12px;
-    color: var(--warning, #f59e0b);
+    color: var(--warning);
     animation: status-spin 900ms linear infinite;
   }
   @keyframes status-spin {
@@ -4664,7 +4664,7 @@
     text-align: center;
     margin: 12px 0 0;
     padding: 12px;
-    border-top: 1px dashed var(--content-border);
+    border-top: none;
   }
   .flood-wait-pill {
     display: inline-flex;
@@ -4672,9 +4672,9 @@
     gap: 4px;
     padding: 3px 10px;
     border-radius: var(--tg-radius-pill);
-    background: color-mix(in oklab, var(--warning, #f59e0b) 18%, transparent);
-    border: 1px solid color-mix(in oklab, var(--warning, #f59e0b) 40%, var(--content-border));
-    color: var(--warning, #f59e0b);
+    background: color-mix(in oklab, var(--warning) 18%, transparent);
+    border: 1px solid color-mix(in oklab, var(--warning) 40%, var(--content-border));
+    color: var(--warning);
     font-family: var(--font-mono, "IBM Plex Mono", monospace);
     font-size: 11px;
     font-variant-numeric: tabular-nums;
@@ -4689,7 +4689,7 @@
   }
   .icon-btn {
     background: transparent;
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--tg-radius-pill);
     width: 32px;
     height: 32px;
@@ -4724,7 +4724,7 @@
   .settings-panel {
     padding: var(--padding);
     background: var(--surface);
-    border: 1px solid var(--content-border);
+    border: none;
     border-radius: var(--border-radius);
     display: flex;
     flex-direction: column;
@@ -4870,7 +4870,7 @@
   .bar-btn {
     padding: 6px 14px;
     border-radius: var(--border-radius);
-    border: 1px solid var(--input-border);
+    border: none;
     background: var(--surface);
     color: var(--secondary);
     font-family: inherit;
@@ -4947,7 +4947,7 @@
     padding: 4px 8px;
     background: var(--surface);
     color: var(--text);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: 6px;
     font-family: var(--font-mono, "IBM Plex Mono", monospace);
     font-size: 12px;
@@ -4972,7 +4972,7 @@
     width: min(420px, 92vw);
     max-height: 80vh;
     background: var(--button-elevated);
-    border: 1px solid var(--content-border);
+    border: none;
     border-radius: calc(var(--border-radius) * 1.4);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
     z-index: 81;
@@ -5056,7 +5056,7 @@
   .keymap-dl kbd {
     padding: 2px 6px;
     background: var(--surface);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: 4px;
     font-family: var(--font-mono, "IBM Plex Mono", monospace);
     font-size: 11px;

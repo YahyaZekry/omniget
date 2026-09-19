@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+import { t } from "$lib/i18n";
   import {
     notesEmbedResolve,
     type EmbedTarget,
@@ -92,8 +93,8 @@
         </svg>
         <span>
           {data.target.kind === "page"
-            ? `Página "${data.target.name}" não encontrada`
-            : "Bloco não encontrado"}
+            ? $t("study.notes.embed.page_not_found", { name: data.target.name })
+            : $t("study.notes.nb.block_not_found")}
         </span>
       </div>
     {:else if data.kind === "cycle"}
@@ -101,7 +102,7 @@
         <svg class="warning-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M12 3l10 18H2z M12 10v5 M12 18v.5" />
         </svg>
-        <span>Embed cíclico bloqueado</span>
+        <span>{$t("study.notes.embed.cycle_blocked")}</span>
       </div>
     {:else if data.kind === "block"}
       <div class="embed-block">
@@ -192,16 +193,16 @@
     align-items: center;
     gap: 6px;
     padding: 4px 8px;
-    background: color-mix(in oklab, var(--warning, #e67e22) 10%, transparent);
-    border: 1px solid color-mix(in oklab, var(--warning, #e67e22) 30%, transparent);
+    background: color-mix(in oklab, var(--warning) 10%, transparent);
+    border: 1px solid color-mix(in oklab, var(--warning) 30%, transparent);
     border-radius: var(--border-radius);
-    color: var(--warning, #e67e22);
+    color: var(--warning);
     font-size: 11px;
   }
   .embed-warning.cycle {
-    background: color-mix(in oklab, var(--error, #e74c3c) 10%, transparent);
-    border-color: color-mix(in oklab, var(--error, #e74c3c) 30%, transparent);
-    color: var(--error, #e74c3c);
+    background: color-mix(in oklab, var(--error) 10%, transparent);
+    border-color: color-mix(in oklab, var(--error) 30%, transparent);
+    color: var(--error);
   }
   .warning-icon {
     flex-shrink: 0;

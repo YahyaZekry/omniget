@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n";
   import type { JournalSummary } from "$lib/notes-bridge";
 
   type Props = {
@@ -105,7 +106,7 @@
       <span class="legend-label">mais</span>
     </span>
   </header>
-  <div class="heatmap" role="img" aria-label="Atividade nos últimos 90 dias">
+  <div class="heatmap" role="img" aria-label={$t("study.notes.nb.activity_90")}>
     {#each grid as col, ci (ci)}
       <div class="col">
         {#each col as cell (cell.day)}
@@ -142,7 +143,7 @@
 <style>
   .heatmap-host {
     background: var(--surface);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     padding: 12px;
   }
@@ -217,7 +218,7 @@
     position: fixed;
     transform: translate(-50%, -100%);
     background: var(--surface);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     padding: 4px 8px;
     font-size: 11px;

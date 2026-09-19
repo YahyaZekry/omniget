@@ -205,7 +205,7 @@
     | { kind: "review"; count: number }
     | { kind: "focus" };
 
-  const hero = $derived<Hero>(
+  const hero = $derived(
     resumeCourse
       ? { kind: "continue", course: resumeCourse }
       : dueToday > 0
@@ -268,7 +268,7 @@
           <a
             class="xp-pill"
             href="/study/achievements"
-            title={`${gamification.xp.toLocaleString()} XP · ${gamification.level_progress_pct}% para nível ${gamification.level + 1}`}
+            title={$t("study.hub.xp_tooltip", { xp: gamification.xp.toLocaleString(), pct: gamification.level_progress_pct, lvl: gamification.level + 1 })}
           >
             <span class="xp-level">L{gamification.level}</span>
             <span class="xp-bar-mini">
@@ -303,14 +303,14 @@
       <article class="hero" class:continue={hero.kind === "continue"} class:review={hero.kind === "review"} class:focus={hero.kind === "focus"}>
         {#if hero.kind === "continue"}
           <span class="hero-label">{$t("study.hub.continue_title")}</span>
-          <h2 class="hero-title">{hero.course.title}</h2>
+          <h2 class="hero-title">{hero.course?.title}</h2>
           <div class="hero-progress">
             <div class="progress-track">
-              <div class="progress-fill" style:width="{Math.round(hero.course.progress_pct ?? 0)}%"></div>
+              <div class="progress-fill" style:width="{Math.round(hero.course?.progress_pct ?? 0)}%"></div>
             </div>
-            <span class="mono hero-pct">{Math.round(hero.course.progress_pct ?? 0)}%</span>
+            <span class="mono hero-pct">{Math.round(hero.course?.progress_pct ?? 0)}%</span>
           </div>
-          <button class="hero-cta" onclick={() => openCourse(hero.course)}>
+          <button class="hero-cta" onclick={() => hero.course && openCourse(hero.course)}>
             {$t("study.hub.continue_cta")}
             <span aria-hidden="true">→</span>
           </button>
@@ -368,8 +368,8 @@
       {#if recentCourses.length > 0}
         <section class="recents-widget">
           <header class="recents-head">
-            <h2>Continuar de onde parou</h2>
-            <a href="/study/library" class="see-all">Ver todos →</a>
+            <h2>{$t("study.hub.continue_section")}</h2>
+            <a href="/study/library" class="see-all">{$t("study.hub.see_all")} →</a>
           </header>
           <ul class="recents-list">
             {#each recentCourses.slice(0, 6) as r (r.course_id)}
@@ -434,7 +434,7 @@
     gap: 0.3rem;
     padding: 0.3rem 0.65rem;
     background: color-mix(in oklab, var(--streak-color) 10%, transparent);
-    border: 1px solid color-mix(in oklab, var(--streak-color) 35%, var(--content-border));
+    border: none;
     border-radius: 999px;
     color: var(--streak-color);
     cursor: pointer;
@@ -459,7 +459,7 @@
     gap: 1rem;
     padding: calc(var(--padding) * 3);
     background: var(--button-elevated);
-    border: 1px solid var(--content-border);
+    border: none;
     border-radius: calc(var(--border-radius) * 1.4);
     animation: hero-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: 80ms;
@@ -782,7 +782,7 @@
     align-items: center;
     gap: 12px;
     padding: 8px 12px;
-    border: 1px solid color-mix(in oklab, var(--input-border) 60%, transparent);
+    border: none;
     border-radius: var(--border-radius);
     background: var(--surface);
     color: var(--text);
@@ -813,7 +813,7 @@
     gap: 0.6rem;
     margin-top: calc(var(--padding) * 2);
     padding: 0.75rem 1rem;
-    border-top: 1px solid color-mix(in oklab, var(--content-border) 60%, transparent);
+    border-top: none;
     color: var(--tertiary);
     font-size: 12px;
     animation: fade-in 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -824,7 +824,7 @@
     height: 32px;
     border-radius: 50%;
     object-fit: cover;
-    border: 1px solid var(--content-border);
+    border: none;
     flex-shrink: 0;
   }
   .made-by-text strong {

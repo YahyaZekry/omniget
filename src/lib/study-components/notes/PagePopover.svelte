@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
+import { t } from "$lib/i18n";
   import {
     notesPagesGetByName,
     notesBlocksPageTree,
@@ -52,7 +53,7 @@
         const p = await notesPagesGetByName(pageName);
         if (cancelled) return;
         if (!p) {
-          error = "página não encontrada";
+          error = $t("study.notes.nb.page_not_found");
           loading = false;
           return;
         }
@@ -83,7 +84,7 @@
   style:left={`${position.x}px`}
   style:top={`${position.y}px`}
   role="dialog"
-  aria-label="Preview da página {pageName}"
+  aria-label={$t("study.notes.nb.preview_aria", { name: pageName })}
 >
   {#if loading}
     <div class="state">carregando…</div>
@@ -104,7 +105,7 @@
       </button>
     </header>
     {#if snippets.length === 0}
-      <p class="empty">Página vazia</p>
+      <p class="empty">{$t("study.notes.pagepopover.empty")}</p>
     {:else}
       <ul class="blocks">
         {#each snippets as s, i (i)}
@@ -124,7 +125,7 @@
     max-height: 320px;
     overflow-y: auto;
     background: var(--surface);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     box-shadow: 0 12px 32px color-mix(in oklab, black 28%, transparent);
     padding: 8px;

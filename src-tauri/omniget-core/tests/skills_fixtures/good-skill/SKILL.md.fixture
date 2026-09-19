@@ -1,0 +1,24 @@
+---
+name: good-skill
+description: Renames a batch of files from a CSV mapping and writes a rollback list. Use when the user has many files to rename at once, mentions a bulk rename, or asks to undo one.
+allowed-tools: Read Write Bash(mv:*)
+license: MIT
+---
+
+# Good skill
+
+A skill that renames files in bulk.
+
+## Steps
+
+1. Read the mapping CSV.
+2. Check every destination is free.
+3. Rename, appending each move to `rollback.txt`.
+
+See [the reference](references/REFERENCE.md) for the CSV columns, and run
+`scripts/rename.sh` to apply a prepared plan.
+
+## Edge cases
+
+- A destination that already exists stops the whole batch.
+- A mapping row with an empty destination is skipped, with a warning.

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n";
   import { showToast } from "$lib/stores/toast-store.svelte";
   import {
     telegramPerfGet,
@@ -107,7 +108,7 @@
     try {
       await telegramBandwidthReset();
       await loadBandwidth();
-      showToast("info", "Uso de hoje zerado");
+      showToast("info", $t("study.telegram.perf.today_reset"));
     } catch (e: any) {
       showToast("error", typeof e === "string" ? e : (e?.message ?? "Erro"));
     } finally {
@@ -120,7 +121,7 @@
     try {
       const r = await telegramPerfSet({ maxThreads: draftMax });
       if (perf) perf = { ...perf, max_threads: r.max_threads };
-      showToast("info", `Máximo de threads: ${r.max_threads}`);
+      showToast("info", $t("study.telegram.perf.max_threads_toast", { n: r.max_threads }));
       await load();
     } catch (e: any) {
       showToast("error", typeof e === "string" ? e : (e?.message ?? "Erro"));
@@ -154,10 +155,10 @@
     <div class="panel" role="dialog" aria-modal="true" aria-label="Performance de download">
       <header class="panel-header">
         <div>
-          <h2>Performance de download</h2>
-          <p class="subtitle">Controle quantas threads paralelas o Telegram usa por arquivo.</p>
+          <h2>{$t("study.telegram.perf.title")}</h2>
+          <p class="subtitle">{$t("study.telegram.perf.subtitle")}</p>
         </div>
-        <button type="button" class="icon-btn" onclick={close} aria-label="Fechar">
+        <button type="button" class="icon-btn" onclick={close} aria-label={$t("study.common.close")}>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 6L6 18" />
             <path d="M6 6l12 12" />
@@ -170,13 +171,13 @@
       {:else if error}
         <div class="error-section">
           <p class="error-msg">{error}</p>
-          <button type="button" class="button" onclick={load}>Tentar novamente</button>
+          <button type="button" class="button" onclick={load}>{$t("study.anki.settings.try_again")}</button>
         </div>
       {:else if perf}
         <section class="setting-section">
           <label class="field">
             <div class="field-row">
-              <span class="field-label">Máximo de threads</span>
+              <span class="field-label">{$t("study.telegram.perf.max_threads")}</span>
               <span class="field-value">{draftMax}</span>
             </div>
             <input
@@ -188,19 +189,18 @@
               class="slider"
             />
             <span class="field-hint">
-              Telegram cobra 1 MiB por chunk. Mais threads = downloads mais rápidos em arquivos grandes,
-              mas pode disparar FLOOD_WAIT em conexões lentas. Padrão: 8.
+              {$t("study.telegram.perf.threads_hint")}
             </span>
           </label>
         </section>
 
         <section class="buckets-section">
-          <span class="section-label">Threads por tamanho de arquivo</span>
+          <span class="section-label">{$t("study.telegram.perf.threads_by_size")}</span>
           <table class="buckets-table">
             <thead>
               <tr>
-                <th>Tamanho</th>
-                <th>Threads atuais</th>
+                <th>{$t("study.telegram.perf.size")}</th>
+                <th>{$t("study.telegram.perf.current_threads")}</th>
               </tr>
             </thead>
             <tbody>
@@ -220,7 +220,7 @@
 
         {#if bw}
           <section class="bandwidth-section">
-            <span class="section-label">Largura de banda</span>
+            <span class="section-label">{$t("study.telegram.perf.bandwidth")}</span>
             <div class="bw-bar-container">
               <div class="bw-bar-outer">
                 <div
@@ -237,7 +237,7 @@
             </div>
             <div class="quota-row">
               <label class="quota-field">
-                <span class="field-label">Quota diária</span>
+                <span class="field-label">{$t("study.telegram.perf.daily_quota")}</span>
                 <div class="quota-input-row">
                   <input
                     type="number"
@@ -268,18 +268,18 @@
 
         {#if sync}
           <section class="sync-section">
-            <span class="section-label">Sincronização automática</span>
+            <span class="section-label">{$t("study.telegram.perf.auto_sync")}</span>
             <p class="info-msg">
-              A cada N minutos o plugin atualiza o cache de canais em background — evita erros CHANNEL_INVALID quando você abre chats antigos.
+              {$t("study.telegram.perf.cache_refresh_hint")}
             </p>
             <label class="toggle-row">
               <input type="checkbox" bind:checked={draftSyncEnabled} />
-              <span>Sincronizar em background</span>
+              <span>{$t("study.telegram.perf.sync_background")}</span>
             </label>
             {#if draftSyncEnabled}
               <label class="field">
                 <div class="field-row">
-                  <span class="field-label">Intervalo</span>
+                  <span class="field-label">{$t("study.telegram.perf.interval")}</span>
                   <span class="field-value">{draftSyncIntervalMin} min</span>
                 </div>
                 <input
@@ -295,11 +295,9 @@
             <div class="sync-status-row">
               <span class="sync-meta">
                 {#if sync.last_success_at > 0}
-                  Última: {new Date(sync.last_success_at * 1000).toLocaleTimeString()}
-                  · {sync.last_updated_count} atualizados
-                  · {sync.last_duration_ms}ms
+                  {$t("study.telegram.perf.last_sync_line", { time: new Date(sync.last_success_at * 1000).toLocaleTimeString(), n: sync.last_updated_count, ms: sync.last_duration_ms })}
                 {:else}
-                  Ainda não sincronizou.
+                  {$t("study.telegram.perf.never_synced")}
                 {/if}
               </span>
               <button
@@ -308,21 +306,21 @@
                 onclick={saveSync}
                 disabled={syncSaving || (draftSyncEnabled === sync.enabled && draftSyncIntervalMin === sync.interval_min)}
               >
-                {syncSaving ? "Salvando..." : "Salvar"}
+                {syncSaving ? $t("study.common.saving") : $t("study.common.save")}
               </button>
             </div>
           </section>
         {/if}
 
         <footer class="panel-footer">
-          <button type="button" class="button" onclick={close} disabled={saving}>Cancelar</button>
+          <button type="button" class="button" onclick={close} disabled={saving}>{$t("study.common.cancel")}</button>
           <button
             type="button"
             class="button primary"
             onclick={save}
             disabled={saving || draftMax === perf.max_threads}
           >
-            {saving ? "Salvando..." : "Salvar"}
+            {saving ? $t("study.common.saving") : $t("study.common.save")}
           </button>
         </footer>
       {/if}
@@ -365,7 +363,7 @@
     display: flex;
     align-items: flex-start;
     gap: var(--padding);
-    border-bottom: 1px solid var(--input-border);
+    border-bottom: none;
     padding-bottom: var(--padding);
   }
 
@@ -471,13 +469,13 @@
     font-size: 11.5px;
     text-transform: uppercase;
     letter-spacing: 0.3px;
-    border-bottom: 1px solid var(--input-border);
+    border-bottom: none;
   }
 
   .buckets-table td {
     padding: 8px;
     color: var(--secondary);
-    border-bottom: 1px solid var(--input-border);
+    border-bottom: none;
   }
 
   .buckets-table tr:last-child td {
@@ -509,7 +507,7 @@
     flex-direction: column;
     gap: 10px;
     padding-top: var(--padding);
-    border-top: 1px solid var(--input-border);
+    border-top: none;
   }
 
   .bw-bar-container {
@@ -587,7 +585,7 @@
   .ghost-btn {
     background: transparent;
     color: var(--gray);
-    border: 1px solid var(--input-border);
+    border: none;
     align-self: flex-start;
     font-size: 11.5px;
   }
@@ -602,7 +600,7 @@
     flex-direction: column;
     gap: 10px;
     padding-top: var(--padding);
-    border-top: 1px solid var(--input-border);
+    border-top: none;
   }
 
   .toggle-row {
@@ -632,7 +630,7 @@
     justify-content: flex-end;
     gap: 8px;
     padding-top: var(--padding);
-    border-top: 1px solid var(--input-border);
+    border-top: none;
   }
 
   .button {

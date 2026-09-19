@@ -434,7 +434,7 @@
 
   .progress-bar-inner {
     height: 100%;
-    background: var(--green);
+    background: var(--success);
     border-radius: 3px;
     transition: width 0.3s ease;
   }
@@ -461,7 +461,7 @@
   }
 
   .stat-paused {
-    color: var(--orange);
+    color: var(--warning);
     font-weight: 500;
   }
 
@@ -480,7 +480,7 @@
     font-size: 13px;
     font-weight: 500;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     color: var(--secondary);
     cursor: pointer;
@@ -527,7 +527,7 @@
   }
 
   .complete-icon {
-    color: var(--green);
+    color: var(--success);
   }
 
   .complete-text {
@@ -544,7 +544,7 @@
   }
 
   .error-icon {
-    color: var(--red);
+    color: var(--danger);
   }
 
   .error-text {
@@ -589,7 +589,7 @@
     font-size: 13px;
     font-weight: 500;
     background: transparent;
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     color: var(--gray);
     cursor: pointer;

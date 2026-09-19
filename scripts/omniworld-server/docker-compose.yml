@@ -1,0 +1,17 @@
+# OmniWorld room server.
+# TLS is not handled here: put a reverse proxy (Caddy/nginx) in front, let it
+# terminate TLS and forward WebSocket upgrades to port 7878, then point the app
+# at wss://<domain>/v1/room
+services:
+  omniworld:
+    build:
+      context: ../..
+      dockerfile: scripts/omniworld-server/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "7878:7878"
+    environment:
+      OMNIWORLD_BIND: "0.0.0.0:7878"
+      OMNIWORLD_MAX_VISITORS: "8"
+      OMNIWORLD_MAX_ROOMS: "200"
+      OMNIWORLD_TTL_S: "21600"

@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "pet",
+  "description": "Capability for the floating Omni pet window (200x200, transparent, always on top). Kept minimal: the pet drags itself, closes itself and brings the main window forward — everything else it needs goes through the pet_* commands. It also listens on `omni://intent`, `llm://tool-ask` and `llm://turn` and answers a pending tool permission with `llm_tool_answer`; application commands are not gated by capabilities, but the event listener is, so `core:event:default` is spelled out here rather than inherited silently from `core:default`.",
+  "windows": ["pet"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-close",
+    "core:window:allow-show",
+    "core:window:allow-set-focus"
+  ]
+}

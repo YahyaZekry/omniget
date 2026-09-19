@@ -10,8 +10,9 @@ use tokio::sync::{mpsc, Semaphore};
 use tokio_util::sync::CancellationToken;
 
 use crate::core::http_fetcher::{
-    get_global_max_concurrent_segments, HttpFetcher, HttpFetcherConfig,
+    get_global_max_concurrent_segments, probe_remote, HttpFetcher, HttpFetcherConfig,
 };
+use crate::core::media_signature::{looks_like_html, sniff_media_format};
 use crate::models::progress::ProgressUpdate;
 
 const CHUNK_TIMEOUT: Duration = Duration::from_secs(45);
@@ -20,6 +21,8 @@ const CHUNK_SIZE: u64 = 10 * 1024 * 1024;
 const CHUNK_THRESHOLD: u64 = 10 * 1024 * 1024;
 const MAX_PARALLEL: usize = 12;
 const MAX_PER_HOST: usize = 16;
+/// Bytes read back from the finished file to tell media from an error page.
+const SNIFF_BYTES: usize = 512;
 
 fn host_semaphores() -> &'static tokio::sync::Mutex<HashMap<String, Arc<Semaphore>>> {
     static MAP: OnceLock<tokio::sync::Mutex<HashMap<String, Arc<Semaphore>>>> = OnceLock::new();
@@ -61,23 +64,60 @@ pub async fn download_direct_with_headers(
     cancel: Option<&CancellationToken>,
 ) -> anyhow::Result<u64> {
     let mut last_err = None;
+    // Two independent budgets, both monotonic, so the loop always terminates:
+    // `attempt` counts the ordinary retries and `forbidden_retries` counts the
+    // 403 ladder. The ladder gets its own counter so a couple of transient
+    // network failures cannot eat the escalation steps before they run, and it
+    // is a local — the count is per download request, never process-wide.
+    let mut attempt: u32 = 0;
+    let mut forbidden_retries: u32 = 0;
+    let mut requests_made: u32 = 0;
+    let mut effective_headers = headers;
 
-    for attempt in 0..MAX_RETRIES {
+    while attempt < MAX_RETRIES {
         if let Some(token) = cancel {
             if token.is_cancelled() {
                 return Err(anyhow!("Download cancelled"));
             }
         }
 
-        if attempt > 0 {
-            let base = 1000 * (attempt as u64);
+        if requests_made > 0 {
+            let base = 1000 * (requests_made as u64);
             let jitter = rand::random::<u64>() % (base / 2 + 1);
             tokio::time::sleep(Duration::from_millis(base + jitter)).await;
         }
 
-        match download_attempt(client, url, output, &progress_tx, headers.clone(), cancel).await {
+        requests_made += 1;
+        match download_attempt(
+            client,
+            url,
+            output,
+            &progress_tx,
+            effective_headers.clone(),
+            cancel,
+        )
+        .await
+        {
             Ok(bytes) => return Ok(bytes),
             Err(e) => {
+                // A 403 on the first try is often just a CDN that wants the
+                // request to look more like a browser one. Climb the ladder
+                // before letting `is_fatal_error` end the download: at most
+                // two extra requests, and only ever two, because the step
+                // function runs dry after that.
+                if is_forbidden_error(&e) {
+                    if let Some(step) = forbidden_retry_step(forbidden_retries) {
+                        tracing::warn!("[direct] HTTP 403; retrying with {}", step.describe());
+                        effective_headers = Some(headers_for_forbidden_retry(
+                            effective_headers.as_ref(),
+                            step,
+                        ));
+                        forbidden_retries += 1;
+                        last_err = Some(e);
+                        // Deliberately does not consume an ordinary retry.
+                        continue;
+                    }
+                }
                 if is_fatal_error(&e) {
                     let _ = std::fs::remove_file(&part_path_for(output));
                     return Err(e);
@@ -89,6 +129,7 @@ pub async fn download_direct_with_headers(
                     e
                 );
                 last_err = Some(e);
+                attempt += 1;
             }
         }
     }
@@ -121,33 +162,79 @@ fn is_fatal_error(err: &anyhow::Error) -> bool {
     false
 }
 
+/// A 403 is the one fatal code worth one more look: plenty of CDNs answer it
+/// to a request that does not smell like a browser and then serve the file
+/// happily to the very same URL with a couple of extra headers.
+fn is_forbidden_error(err: &anyhow::Error) -> bool {
+    err.to_string().contains("HTTP 403")
+}
+
+/// The rungs of the 403 ladder, in order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ForbiddenRetryStep {
+    /// Ask for the whole body as a range. A browser media element always does.
+    RangeOnly,
+    /// Same, plus the `sec-fetch-*` hints a media request carries.
+    RangeAndFetchHints,
+}
+
+impl ForbiddenRetryStep {
+    fn describe(self) -> &'static str {
+        match self {
+            ForbiddenRetryStep::RangeOnly => "Range: bytes=0-",
+            ForbiddenRetryStep::RangeAndFetchHints => "Range + sec-fetch hints",
+        }
+    }
+}
+
+/// Which rung to try next, given how many the caller already burned.
+///
+/// `None` ends the ladder — that is what stops the retry loop from spinning,
+/// since the caller only ever climbs while this returns `Some`.
+fn forbidden_retry_step(retries_done: u32) -> Option<ForbiddenRetryStep> {
+    match retries_done {
+        0 => Some(ForbiddenRetryStep::RangeOnly),
+        1 => Some(ForbiddenRetryStep::RangeAndFetchHints),
+        _ => None,
+    }
+}
+
+/// Caller headers plus whatever the given rung adds.
+fn headers_for_forbidden_retry(
+    base: Option<&reqwest::header::HeaderMap>,
+    step: ForbiddenRetryStep,
+) -> reqwest::header::HeaderMap {
+    use reqwest::header::HeaderValue;
+
+    let mut headers = base.cloned().unwrap_or_default();
+    headers.insert(reqwest::header::RANGE, HeaderValue::from_static("bytes=0-"));
+    if step == ForbiddenRetryStep::RangeAndFetchHints {
+        headers.insert("sec-fetch-mode", HeaderValue::from_static("no-cors"));
+        headers.insert("sec-fetch-site", HeaderValue::from_static("same-site"));
+    }
+    headers
+}
+
+/// `Err` só quando o host não responde de jeito nenhum; resposta estranha
+/// (sem tamanho, sem Range) vira `Ok` com o que deu para saber.
 async fn probe_url(
     client: &reqwest::Client,
     url: &str,
     headers: Option<&reqwest::header::HeaderMap>,
-) -> ProbeResult {
-    let mut request = client.head(url);
-    if let Some(h) = headers {
-        request = request.headers(h.clone());
-    }
-    match tokio::time::timeout(Duration::from_secs(15), request.send()).await {
-        Ok(Ok(resp)) if resp.status().is_success() => {
-            let content_length = resp.content_length();
-            let accept_ranges = resp
-                .headers()
-                .get("accept-ranges")
-                .and_then(|v| v.to_str().ok())
-                .map(|v| v.contains("bytes"))
-                .unwrap_or(false);
-            ProbeResult {
-                content_length,
-                accept_ranges,
-            }
+) -> anyhow::Result<ProbeResult> {
+    match probe_remote(client, url, headers, Duration::from_secs(12)).await {
+        Ok(p) => Ok(ProbeResult {
+            content_length: p.content_length,
+            accept_ranges: p.accept_ranges,
+        }),
+        Err(e) if e.to_string().starts_with("unreachable") => Err(e),
+        Err(e) => {
+            tracing::debug!("[direct] probe failed, streaming without Range: {}", e);
+            Ok(ProbeResult {
+                content_length: None,
+                accept_ranges: false,
+            })
         }
-        _ => ProbeResult {
-            content_length: None,
-            accept_ranges: false,
-        },
     }
 }
 
@@ -164,7 +251,7 @@ async fn download_attempt(
         std::fs::create_dir_all(parent)?;
     }
 
-    let probe = probe_url(client, url, headers.as_ref()).await;
+    let probe = probe_url(client, url, headers.as_ref()).await?;
 
     let use_chunked =
         probe.accept_ranges && probe.content_length.is_some_and(|s| s > CHUNK_THRESHOLD);
@@ -174,6 +261,14 @@ async fn download_attempt(
             Ok(size) => return Ok(size),
             Err(fetch_err) => {
                 if is_fatal_error(&fetch_err) {
+                    return Err(fetch_err);
+                }
+                if fetch_err.to_string().contains("HTTP 429") {
+                    // Não cair para o stream único: o host ainda está
+                    // contando as conexões que acabaram de fechar. Espera e
+                    // deixa a tentativa seguinte rodar com menos segmentos.
+                    let _ = std::fs::remove_file(&part_path);
+                    tokio::time::sleep(Duration::from_secs(5)).await;
                     return Err(fetch_err);
                 }
                 let _ = std::fs::remove_file(&part_path);
@@ -224,6 +319,11 @@ async fn download_attempt(
         }
     }
 
+    if let Err(e) = reject_html_masquerading_as_media(&part_path) {
+        let _ = std::fs::remove_file(&part_path);
+        return Err(e);
+    }
+
     std::fs::rename(&part_path, output)?;
     let _ = progress_tx.send(ProgressUpdate::percent(100.0)).await;
 
@@ -254,6 +354,7 @@ async fn run_http_fetcher(
         None => teto,
     };
     let inicio = std::time::Instant::now();
+    let _active = super::adaptive_concurrency::ActiveDownloadGuard::new();
     let cfg = HttpFetcherConfig {
         min_size_for_chunked: 0,
         concurrent_segments: concurrent,
@@ -269,7 +370,26 @@ async fn run_http_fetcher(
     if let Some(c) = cancel {
         fetcher = fetcher.with_cancel(c.clone());
     }
-    let result = fetcher.download(progress_tx.clone()).await?;
+    let result = match fetcher.download(progress_tx.clone()).await {
+        Ok(r) => r,
+        Err(e) => {
+            // 429 com N conexões é o host dizendo "menos": registra para o
+            // tuner cortar pela metade na próxima tentativa (o Hetzner speed
+            // server devolveu 429 três vezes seguidas com 8 segmentos e o
+            // retry cego repetia os mesmos 8).
+            if e.to_string().contains("HTTP 429") {
+                if let Some(h) = &host {
+                    concurrency_tuner().lock().await.record_rate_limit(h);
+                    tracing::warn!(
+                        "[direct] {} rate-limited with {} segments; next attempt uses fewer",
+                        h,
+                        concurrent
+                    );
+                }
+            }
+            return Err(e);
+        }
+    };
 
     // So conta como amostra o que durou o suficiente para a medida significar
     // alguma coisa: um arquivo de 200 KB mede latencia, nao vazao.
@@ -293,10 +413,7 @@ async fn run_http_fetcher(
 /// codigo async.
 fn concurrency_tuner() -> &'static tokio::sync::Mutex<super::adaptive_concurrency::ConcurrencyTuner>
 {
-    static TUNER: std::sync::OnceLock<
-        tokio::sync::Mutex<super::adaptive_concurrency::ConcurrencyTuner>,
-    > = std::sync::OnceLock::new();
-    TUNER.get_or_init(|| tokio::sync::Mutex::new(Default::default()))
+    super::adaptive_concurrency::global()
 }
 
 fn host_of(url: &str) -> Option<String> {
@@ -304,6 +421,43 @@ fn host_of(url: &str) -> Option<String> {
         .ok()?
         .host_str()
         .map(|h| h.to_ascii_lowercase())
+}
+
+/// Last gate before the `.part` becomes the real file.
+///
+/// Only an HTML page is rejected. Sniffing the *positive* case would mean
+/// failing every container we cannot recognise — subtitles, images, archives,
+/// PDFs all go through this same path — so the rule is the conservative one:
+/// no known media signature **and** it opens like a document. A CDN error page
+/// served as `200 OK` is exactly that; a `.srt` is not.
+///
+/// The content-type check in `download_single_stream` only sees the header,
+/// which a misconfigured CDN may set to `application/octet-stream` while the
+/// body is still an error page. This reads the bytes that actually landed.
+fn reject_html_masquerading_as_media(part_path: &Path) -> anyhow::Result<()> {
+    let head = read_head(part_path, SNIFF_BYTES)?;
+    if sniff_media_format(&head).is_none() && looks_like_html(&head) {
+        return Err(anyhow!(
+            "Server returned HTML instead of media — the link may have expired or needs a login"
+        ));
+    }
+    Ok(())
+}
+
+/// First `max` bytes of a file, or fewer if the file is shorter.
+fn read_head(path: &Path, max: usize) -> anyhow::Result<Vec<u8>> {
+    use std::io::Read;
+    let mut file = std::fs::File::open(path)?;
+    let mut buf = vec![0u8; max];
+    let mut filled = 0usize;
+    while filled < max {
+        match file.read(&mut buf[filled..])? {
+            0 => break,
+            n => filled += n,
+        }
+    }
+    buf.truncate(filled);
+    Ok(buf)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -318,7 +472,13 @@ async fn download_single_stream(
     cancel: Option<&CancellationToken>,
 ) -> anyhow::Result<()> {
     let mut request = client.get(url);
-    if let Some(h) = headers {
+    if let Some(mut h) = headers {
+        if existing_bytes > 0 {
+            // The 403 ladder may have added `Range: bytes=0-`; a resume needs
+            // its own range, and `RequestBuilder::header` appends, so leaving
+            // both in would send two Range headers on the same request.
+            h.remove(reqwest::header::RANGE);
+        }
         request = request.headers(h);
     }
 
@@ -554,6 +714,179 @@ mod tests {
             "host tem que normalizar para caixa baixa, senao vira duas entradas"
         );
         assert_eq!(host_of("nao e url"), None);
+    }
+
+    #[test]
+    fn forbidden_ladder_has_exactly_two_rungs_in_order() {
+        assert_eq!(
+            forbidden_retry_step(0),
+            Some(ForbiddenRetryStep::RangeOnly),
+            "first retry only re-sends with Range"
+        );
+        assert_eq!(
+            forbidden_retry_step(1),
+            Some(ForbiddenRetryStep::RangeAndFetchHints),
+            "second retry adds the sec-fetch hints"
+        );
+        assert_eq!(forbidden_retry_step(2), None, "the ladder ends here");
+        assert_eq!(forbidden_retry_step(99), None);
+    }
+
+    #[test]
+    fn forbidden_ladder_terminates_and_then_403_is_fatal() {
+        // The decision logic of the retry loop, without any network: keep
+        // climbing while the ladder offers a rung, then fall through to the
+        // fatal check. Bounded by construction — `forbidden_retry_step` runs
+        // dry, so the loop cannot spin.
+        let err = anyhow!("HTTP 403 downloading https://cdn.example/a.mp4");
+        let mut forbidden_retries = 0u32;
+        let mut requests = 1u32; // the first request already happened
+
+        loop {
+            if !is_forbidden_error(&err) {
+                break;
+            }
+            match forbidden_retry_step(forbidden_retries) {
+                Some(_) => {
+                    forbidden_retries += 1;
+                    requests += 1;
+                }
+                None => break,
+            }
+        }
+
+        assert_eq!(forbidden_retries, 2, "exactly two extra tries");
+        assert_eq!(requests, 3, "three requests in total, never more");
+        assert!(
+            is_fatal_error(&err),
+            "once the ladder is spent a 403 is fatal again"
+        );
+    }
+
+    #[test]
+    fn only_403_climbs_the_ladder() {
+        assert!(is_forbidden_error(&anyhow!("HTTP 403 downloading url")));
+        for other in ["HTTP 400", "HTTP 401", "HTTP 404", "HTTP 410", "HTTP 451"] {
+            let e = anyhow!("{} downloading url", other);
+            assert!(
+                !is_forbidden_error(&e),
+                "{other} must stay fatal on the first try"
+            );
+            assert!(is_fatal_error(&e));
+        }
+    }
+
+    #[test]
+    fn forbidden_retry_headers_escalate_and_keep_the_caller_headers() {
+        let mut base = reqwest::header::HeaderMap::new();
+        base.insert(
+            reqwest::header::REFERER,
+            reqwest::header::HeaderValue::from_static("https://example.com/"),
+        );
+
+        let first = headers_for_forbidden_retry(Some(&base), ForbiddenRetryStep::RangeOnly);
+        assert_eq!(first.get(reqwest::header::RANGE).unwrap(), "bytes=0-");
+        assert!(first.get("sec-fetch-mode").is_none());
+        assert_eq!(
+            first.get(reqwest::header::REFERER).unwrap(),
+            "https://example.com/",
+            "the caller's headers survive the escalation"
+        );
+
+        let second =
+            headers_for_forbidden_retry(Some(&first), ForbiddenRetryStep::RangeAndFetchHints);
+        assert_eq!(second.get(reqwest::header::RANGE).unwrap(), "bytes=0-");
+        assert_eq!(second.get("sec-fetch-mode").unwrap(), "no-cors");
+        assert_eq!(second.get("sec-fetch-site").unwrap(), "same-site");
+        assert_eq!(
+            second.get_all(reqwest::header::RANGE).iter().count(),
+            1,
+            "insert, not append: never two Range headers"
+        );
+    }
+
+    #[test]
+    fn forbidden_retry_headers_work_without_caller_headers() {
+        let h = headers_for_forbidden_retry(None, ForbiddenRetryStep::RangeAndFetchHints);
+        assert_eq!(h.get(reqwest::header::RANGE).unwrap(), "bytes=0-");
+        assert_eq!(h.get("sec-fetch-site").unwrap(), "same-site");
+    }
+
+    fn temp_file(name: &str, bytes: &[u8]) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "omniget-direct-test-{}-{}",
+            std::process::id(),
+            name
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(name);
+        std::fs::write(&path, bytes).unwrap();
+        path
+    }
+
+    #[test]
+    fn html_error_page_is_rejected_before_rename() {
+        let path = temp_file(
+            "erro.mp4.part",
+            b"<!DOCTYPE html>\n<html><body>Access denied</body></html>",
+        );
+        let err = reject_html_masquerading_as_media(&path).unwrap_err();
+        assert!(
+            err.to_string().contains("HTML instead of media"),
+            "the message has to be the fatal one: {err}"
+        );
+        assert!(is_fatal_error(&err), "no point retrying an error page");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn real_media_passes_the_gate() {
+        let mut mp4 = vec![0x00, 0x00, 0x00, 0x20];
+        mp4.extend_from_slice(b"ftypisom");
+        mp4.resize(2048, 0);
+        let path = temp_file("ok.mp4.part", &mp4);
+        assert!(reject_html_masquerading_as_media(&path).is_ok());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn unsniffable_containers_are_never_rejected() {
+        // The whole reason the gate only rejects HTML: subtitles, images and
+        // archives share this code path and have no media signature at all.
+        for (name, body) in [
+            (
+                "legenda.srt.part",
+                b"1\n00:00:01,000 --> 00:00:02,000\nOi\n".as_slice(),
+            ),
+            (
+                "capa.jpg.part",
+                &[0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46][..],
+            ),
+            (
+                "pack.zip.part",
+                b"PK\x03\x04....................".as_slice(),
+            ),
+            ("doc.pdf.part", b"%PDF-1.7\n%\xE2\xE3\xCF\xD3\n".as_slice()),
+            ("vazio.bin.part", b"".as_slice()),
+        ] {
+            let path = temp_file(name, body);
+            assert!(
+                reject_html_masquerading_as_media(&path).is_ok(),
+                "{name} must not be rejected by the HTML gate"
+            );
+            let _ = std::fs::remove_file(&path);
+        }
+    }
+
+    #[test]
+    fn read_head_stops_at_the_limit() {
+        let path = temp_file("grande.bin.part", &vec![7u8; SNIFF_BYTES * 4]);
+        assert_eq!(read_head(&path, SNIFF_BYTES).unwrap().len(), SNIFF_BYTES);
+        let _ = std::fs::remove_file(&path);
+
+        let short = temp_file("curto.bin.part", &[1, 2, 3]);
+        assert_eq!(read_head(&short, SNIFF_BYTES).unwrap(), vec![1, 2, 3]);
+        let _ = std::fs::remove_file(&short);
     }
 
     #[tokio::test]

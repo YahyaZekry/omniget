@@ -318,7 +318,7 @@
     justify-content: flex-end;
     gap: 8px;
     padding: 12px 20px 16px;
-    border-top: 1px solid var(--content-border, var(--button));
+    border-top: none;
   }
 
   .btn-secondary,
@@ -345,7 +345,7 @@
 
   .btn-primary {
     background: var(--accent);
-    color: var(--on-accent, #fff);
+    color: var(--on-accent);
   }
 
   .btn-primary:hover:not(:disabled) {

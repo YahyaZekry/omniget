@@ -17,13 +17,24 @@ pub mod core;
 pub mod extension_storage;
 pub mod external_url;
 pub mod hotkey;
+pub mod jobs;
+pub mod limits_strip;
+pub mod llm_manager;
 pub mod local_bridge;
+pub mod local_bridge_debug;
+pub mod local_bridge_jobs;
+pub mod local_bridge_llm;
+pub mod mcp;
 pub mod models;
 pub mod platforms;
 pub mod plugin_host;
 pub mod plugin_loader;
+pub mod profile;
+pub mod secrets;
 pub mod storage;
 pub mod tray;
+pub mod world_bench;
+pub mod world_manager;
 
 struct DesktopCookieProvider;
 
@@ -200,6 +211,15 @@ pub struct AppState {
     pub active_p2p_sends: ActiveP2pSends,
     pub frontend_ready: Arc<tokio::sync::Mutex<bool>>,
     pub pending_external_events: Arc<tokio::sync::Mutex<Vec<external_url::ExternalUrlEvent>>>,
+    pub omnidisc_gateways: commands::omnidisc::gateway::Gateways,
+    pub omnidisc_voice: Arc<commands::omnidisc::voice::VoiceManager>,
+    pub omnidisc_stream: Arc<commands::omnidisc::stream::StreamManager>,
+    pub omnidisc_mls: Arc<commands::omnidisc::mls::MlsManager>,
+    pub omnidisc_uploads: Arc<commands::omnidisc::upload::UploadManager>,
+    pub profile: Arc<profile::ProfileManager>,
+    pub llm: Arc<llm_manager::LlmManager>,
+    /// Lazy on purpose: a user who never opens `/world` pays nothing.
+    pub world: std::sync::OnceLock<Arc<world_manager::WorldManager>>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -258,10 +278,25 @@ pub fn run() {
         active_p2p_sends: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
         frontend_ready: Arc::new(tokio::sync::Mutex::new(false)),
         pending_external_events: Arc::new(tokio::sync::Mutex::new(Vec::new())),
+        omnidisc_gateways: commands::omnidisc::gateway::new_gateways(),
+        omnidisc_voice: Arc::new(commands::omnidisc::voice::VoiceManager::new()),
+        omnidisc_stream: Arc::new(commands::omnidisc::stream::StreamManager::default()),
+        omnidisc_mls: Arc::new(commands::omnidisc::mls::MlsManager::default()),
+        omnidisc_uploads: Arc::new(commands::omnidisc::upload::UploadManager::default()),
+        profile: Arc::new(profile::ProfileManager::new()),
+        llm: Arc::new(llm_manager::LlmManager::new()),
+        world: std::sync::OnceLock::new(),
     };
 
-    tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+    // A second profile (`OMNIGET_DATA_DIR` set by hand, not by portable mode)
+    // is its own app: own settings, own bridge port, no single-instance lock.
+    let second_profile = std::env::var_os("OMNIGET_DATA_DIR").is_some()
+        && std::env::var("OMNIGET_PORTABLE").ok().as_deref() != Some("1");
+    let builder = tauri::Builder::default();
+    let builder = if second_profile {
+        builder
+    } else {
+        builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             if let Some(url) =
                 external_url::find_external_url_arg(argv.iter().skip(1).map(|arg| arg.as_str()))
             {
@@ -280,6 +315,8 @@ pub fn run() {
                 tray::show_window(app);
             }
         }))
+    };
+    builder
         .manage(state)
         .manage(Arc::new(tokio::sync::RwLock::new(
             plugin_loader::PluginManager::new(
@@ -298,7 +335,11 @@ pub fn run() {
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
-                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                    let pressed = event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed;
+                    if hotkey::handle_ptt(app, shortcut, pressed) {
+                        return;
+                    }
+                    if pressed {
                         hotkey::on_hotkey_pressed(app, shortcut);
                     }
                 })
@@ -311,6 +352,11 @@ pub fn run() {
             None,
         ))
         .setup(|app| {
+            // Provider keys (and anything else the core stores) go through the
+            // app's store — keychain where the policy allows it — instead of
+            // the core's file default. Must run before any secret is read.
+            omniget_core::core::secrets::install(std::sync::Arc::new(secrets::AppSecretStore));
+
             // A janela principal e criada aqui, e nao pelo `tauri.conf.json`
             // (`"create": false`), porque so daqui da para passar
             // `.data_directory(...)` ao WebView2. O Tauri resolve esse caminho
@@ -391,6 +437,23 @@ pub fn run() {
                     });
                 }
             }
+
+            // Modo bench do mundo (`OMNIGET_WORLD_BENCH=<cenario>`): mesmo molde
+            // do smoke; abre `/world?bench=`, recebe o JSON e sai. Ver `world_bench.rs`.
+            world_bench::maybe_run(app);
+
+            // The pet survives restarts when the user left it on.
+            if commands::pet::load_prefs().enabled {
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(error) = commands::pet::pet_open(handle).await {
+                        tracing::warn!("pet window did not reopen: {error}");
+                    }
+                });
+            }
+
+            // So does the limits strip; off by default, and then this is a no-op.
+            limits_strip::commands::restore(app.handle());
 
             commands::host_queue::register_event_listeners(app.handle());
             {
@@ -575,10 +638,13 @@ pub fn run() {
                     core::flight_recorder::record(line);
                     let should_emit = core::download_log::push_line(id, line);
                     if should_emit {
+                        // A linha vai junto para o card mostrar "a última
+                        // coisa que o yt-dlp disse" sem pedir o log inteiro
+                        // a cada evento.
                         let _ = tauri::Emitter::emit(
                             &app_handle,
                             "download-log-update",
-                            serde_json::json!({ "id": id }),
+                            serde_json::json!({ "id": id, "line": line }),
                         );
                     }
                 }));
@@ -623,6 +689,36 @@ pub fn run() {
                     for url in event.urls() {
                         let raw = url.to_string();
                         let handle = app_handle.clone();
+                        // Sign in with OpenRouter (PKCE) comes back on the same
+                        // scheme; it is a key exchange, not a media URL.
+                        if raw.starts_with("omniget://openrouter-auth") {
+                            let code = url
+                                .query_pairs()
+                                .find(|(k, _)| k == "code")
+                                .map(|(_, v)| v.into_owned())
+                                .unwrap_or_default();
+                            let state = url
+                                .query_pairs()
+                                .find(|(k, _)| k == "state")
+                                .map(|(_, v)| v.into_owned());
+                            tauri::async_runtime::spawn(async move {
+                                use tauri::Emitter;
+                                let payload = match omniget_core::core::tools::ai_keys::pkce_finish(
+                                    &code,
+                                    state.as_deref(),
+                                )
+                                .await
+                                {
+                                    Ok(key) => serde_json::json!({ "ok": true, "key": key }),
+                                    Err(error) => {
+                                        tracing::warn!("OpenRouter PKCE exchange failed: {error}");
+                                        serde_json::json!({ "ok": false, "error": error.to_string() })
+                                    }
+                                };
+                                let _ = handle.emit("llm://openrouter-auth", payload);
+                            });
+                            continue;
+                        }
                         tauri::async_runtime::spawn(async move {
                             if let Err(error) =
                                 external_url::handle_external_url(&handle, raw, "deep-link").await
@@ -645,6 +741,7 @@ pub fn run() {
             }
             tray::setup(app.handle())?;
             hotkey::register_from_settings(app.handle());
+            commands::omnidisc::voice::start(app.handle());
 
             // Migration: drop the manifests / binary copies the previous
             // native-messaging code left under `~/.config/...` so Chrome and
@@ -694,7 +791,8 @@ pub fn run() {
             {
                 let app_handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
-                    local_bridge::spawn(app_handle).await;
+                    local_bridge::spawn(app_handle.clone()).await;
+                    jobs::boot(&app_handle);
                 });
             }
             {
@@ -766,14 +864,49 @@ pub fn run() {
                         .build()
                         .expect("startup runtime");
                     rt.block_on(async {
-                        if let Some(ytdlp) = core::ytdlp::find_ytdlp_cached().await {
-                            match core::ytdlp::check_ytdlp_update(&ytdlp).await {
-                                Ok(true) => tracing::info!("yt-dlp updated successfully"),
-                                Ok(false) => tracing::debug!("yt-dlp already up to date"),
-                                Err(e) => tracing::warn!("yt-dlp update check failed: {}", e),
-                            }
+                        // Garante o yt-dlp (zipapp quando há Python, senão o
+                        // onefile) antes do primeiro download pedir por ele.
+                        if let Err(e) = core::ytdlp::ensure_ytdlp().await {
+                            tracing::warn!("yt-dlp not available at startup: {}", e);
                         }
                         core::dependencies::ensure_js_runtime().await;
+                        let _ = tokio::task::spawn_blocking(
+                            core::ytdlp::cleanup_stale_pyinstaller_dirs,
+                        )
+                        .await;
+                        // O `--update-to` é um bootstrap inteiro do yt-dlp
+                        // mais rede, e trocar o binário com download ativo
+                        // quebra o processo (B2). Espera o app assentar e só
+                        // roda sem yt-dlp em andamento; se a fila está cheia,
+                        // tenta de novo a cada 5 min por até uma hora.
+                        tokio::time::sleep(std::time::Duration::from_secs(45)).await;
+                        for _ in 0..12 {
+                            let Some(ytdlp) = core::ytdlp::find_ytdlp_cached().await else {
+                                break;
+                            };
+                            match core::ytdlp::check_ytdlp_update_detailed(&ytdlp).await {
+                                Ok(core::ytdlp::UpdateCheck::Updated) => {
+                                    tracing::info!("yt-dlp updated successfully");
+                                    break;
+                                }
+                                Ok(core::ytdlp::UpdateCheck::UpToDate)
+                                | Ok(core::ytdlp::UpdateCheck::AlreadyChecked) => {
+                                    tracing::debug!("yt-dlp already up to date");
+                                    break;
+                                }
+                                Ok(core::ytdlp::UpdateCheck::Busy) => {
+                                    tracing::debug!(
+                                        "yt-dlp update check deferred: downloads running"
+                                    );
+                                    tokio::time::sleep(std::time::Duration::from_secs(300))
+                                        .await;
+                                }
+                                Err(e) => {
+                                    tracing::warn!("yt-dlp update check failed: {}", e);
+                                    break;
+                                }
+                            }
+                        }
                     });
                 })
                 .ok();
@@ -797,16 +930,64 @@ pub fn run() {
 
             Ok(())
         })
-        .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == "main" {
-                    api.prevent_close();
-                    let _ = window.hide();
-                }
+        .on_window_event(|window, event| match event {
+            tauri::WindowEvent::CloseRequested { api, .. } if window.label() == "main" => {
+                api.prevent_close();
+                let _ = window.hide();
             }
+            tauri::WindowEvent::Destroyed
+                if window.label().starts_with("omnidisc-stream-") =>
+            {
+                commands::omnidisc::stream::on_stream_window_destroyed(
+                    &window.app_handle().clone(),
+                    window.label(),
+                );
+            }
+            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             commands::auth_webview::open_auth_webview,
+            commands::omnidisc::omnidisc_connect,
+            commands::omnidisc::gateway::omnidisc_typing,
+            commands::omnidisc::device::omnidisc_device_fingerprint,
+            commands::omnidisc::device::omnidisc_list_user_devices,
+            commands::omnidisc::device::omnidisc_revoke_device,
+            commands::omnidisc::mls::omnidisc_mls_sync,
+            commands::omnidisc::mls::omnidisc_mls_status,
+            commands::omnidisc::mls::omnidisc_mls_recall,
+            commands::omnidisc::mls::omnidisc_mls_device_revoked,
+            commands::omnidisc::upload::omnidisc_instance_limits,
+            commands::omnidisc::upload::omnidisc_stage_file,
+            commands::omnidisc::upload::omnidisc_upload_start,
+            commands::omnidisc::upload::omnidisc_upload_cancel,
+            commands::omnidisc::upload::omnidisc_download_attachment,
+            commands::omnidisc::gateway::omnidisc_gateway_connect,
+            commands::omnidisc::gateway::omnidisc_gateway_disconnect,
+            commands::omnidisc::gateway::omnidisc_gateway_send,
+            commands::omnidisc::gateway::omnidisc_gateway_status,
+            commands::omnidisc::voice::omnidisc_voice_join,
+            commands::omnidisc::voice::omnidisc_voice_leave,
+            commands::omnidisc::voice::omnidisc_voice_set_mute,
+            commands::omnidisc::voice::omnidisc_voice_set_deaf,
+            commands::omnidisc::voice::omnidisc_voice_set_volume,
+            commands::omnidisc::voice::omnidisc_voice_devices,
+            commands::omnidisc::voice::omnidisc_voice_set_device,
+            commands::omnidisc::voice::omnidisc_voice_stats,
+            commands::omnidisc::voice::omnidisc_voice_ptt,
+            commands::omnidisc::voice::omnidisc_voice_status,
+            commands::omnidisc::voice::omnidisc_voice_set_noise_suppression,
+            commands::omnidisc::voice::omnidisc_voice_mic_test,
+            commands::omnidisc::voice::omnidisc_voice_set_ducking,
+            commands::omnidisc::voice::omnidisc_voice_ptt_status,
+            commands::omnidisc::stream::omnidisc_media_capabilities,
+            commands::omnidisc::stream::omnidisc_stream_sources,
+            commands::omnidisc::stream::omnidisc_stream_start,
+            commands::omnidisc::stream::omnidisc_stream_stop,
+            commands::omnidisc::stream::omnidisc_stream_stats,
+            commands::omnidisc::stream::omnidisc_stream_set_volume,
+            commands::omnidisc::stream::omnidisc_stream_set_viewport,
+            commands::omnidisc::stream::omnidisc_stream_watch,
+            commands::omnidisc::stream::omnidisc_stream_unwatch,
             commands::league::league_status,
             commands::league::league_get,
             commands::league::league_install_dir,
@@ -855,6 +1036,30 @@ pub fn run() {
             commands::league::league_ability_cooldowns,
             commands::league::league_spectate,
             commands::league::league_dodge,
+            commands::league::profile::league_profile_state,
+            commands::league::profile::league_set_chat_rank,
+            commands::league::profile::league_reset_chat_rank,
+            commands::league::profile::league_set_challenge_crystal,
+            commands::league::profile::league_set_chat_icon,
+            commands::league::profile::league_challenges,
+            commands::league::profile::league_set_challenge_prefs,
+            commands::league::profile::league_set_regalia,
+            commands::league::profile::league_friends,
+            commands::league::profile::league_remove_friends,
+            commands::league::profile::league_random_champion,
+            commands::league::profile::league_declare_champion,
+            commands::league::skins::league_roll_skin,
+            commands::league::skins::league_roll_ward,
+            commands::league::skins::league_skin_carousel,
+            commands::league::sgp::league_sgp_status,
+            commands::league::sgp::league_sgp_match_history,
+            commands::league::sgp::league_sgp_ranked,
+            commands::league::sgp::league_sgp_summoners,
+            commands::league::sgp::league_sgp_download_replay,
+            commands::league::coach::league_coach_review,
+            commands::league::coach::league_coach_trends,
+            commands::league::coach::league_coach_ask,
+            commands::league::coach::league_coach_ready,
             commands::bilibili_auth::bilibili_qr_generate,
             commands::bilibili_auth::bilibili_qr_poll,
             commands::bilibili_auth::bilibili_captcha_challenge,
@@ -941,6 +1146,8 @@ pub fn run() {
             commands::downloads::update_max_concurrent,
             commands::downloads::clear_finished_downloads,
             commands::downloads::get_download_log,
+            commands::downloads::get_download_command,
+            commands::downloads::retry_download_with_command,
             commands::downloads::parse_batch_file,
             commands::downloads::get_recovery_items,
             commands::downloads::discard_recovery,
@@ -966,6 +1173,239 @@ pub fn run() {
             commands::settings::rotate_bridge_token,
             commands::settings::bridge_open_pairing,
             commands::dependencies::check_dependencies,
+            commands::spicetify::spicetify_status,
+            commands::spicetify::spicetify_install,
+            commands::spicetify::spicetify_action,
+            commands::spicetify::spicetify_set_theme,
+            commands::spicetify::spicetify_remove_addon,
+            commands::spicetify::spicetify_install_marketplace,
+            commands::tools::text::tool_humanize,
+            commands::tools::ai::tool_ollama_status,
+            commands::tools::ai::tool_ollama_recommended,
+            commands::tools::ai::tool_ollama_pull,
+            commands::tools::ai::tool_ollama_delete,
+            commands::tools::ai::tool_pricing_info,
+            commands::tools::ai::tool_pricing_search,
+            commands::tools::ai::tool_pricing_for,
+            commands::tools::ai::tool_usage_report,
+            commands::tools::ai::tool_usage_clear,
+            commands::tools::documents::tool_slideshare,
+            commands::tools::documents::tool_gdocs_parse,
+            commands::tools::documents::tool_gdocs_download,
+            commands::tools::documents::tool_calameo,
+            commands::tools::documents::tool_gallery_status,
+            commands::tools::documents::tool_gallery_install,
+            commands::tools::documents::tool_gallery_download,
+            commands::tools::downloads::tool_aria2_status,
+            commands::tools::downloads::tool_aria2_download,
+            commands::tools::downloads::tool_manifest_download,
+            commands::tools::files::tool_dupes_scan,
+            commands::tools::files::tool_shred,
+            commands::tools::files::tool_dupes_delete,
+            commands::tools::files::tool_rename_plan,
+            commands::tools::files::tool_rename_apply,
+            commands::tools::files::tool_file_search_backend,
+            commands::tools::files::tool_file_search,
+            commands::tools::files::tool_awake_set,
+            commands::tools::files::tool_awake_get,
+            commands::tools::images::tool_upscale_status,
+            commands::tools::images::tool_upscale_install,
+            commands::tools::images::tool_upscale_run,
+            commands::tools::images::tool_resize,
+            commands::tools::images::tool_ocr_status,
+            commands::tools::images::tool_ocr_run,
+            commands::tools::images::tool_exif_read,
+            commands::tools::images::tool_exif_strip,
+            commands::tools::images::tool_icon_pack,
+            commands::tools::images::tool_img_dupes,
+            commands::tools::images::tool_img_compress,
+            commands::tools::video::tool_video_compress,
+            commands::tools::video::tool_video_restore,
+            commands::tools::video::tool_video_gif,
+            commands::tools::video::tool_video_silence,
+            commands::tools::video::tool_subtitle_convert,
+            commands::tools::video::tool_subtitle_burn,
+            commands::tools::audio::tool_audio_clean,
+            commands::tools::ctf::tool_ctf_hash,
+            commands::tools::ctf::tool_ctf_hmac,
+            commands::tools::ctf::tool_ctf_hash_id,
+            commands::tools::ctf::tool_ctf_magic,
+            commands::tools::ctf::tool_ctf_cipher,
+            commands::tools::ctf::tool_ctf_caesar_brute,
+            commands::tools::ctf::tool_ctf_xor,
+            commands::tools::ctf::tool_ctf_encode,
+            commands::tools::ctf::tool_ctf_detect,
+            commands::tools::ctf::tool_ctf_freq,
+            commands::tools::phone::tool_kde_status,
+            commands::tools::phone::tool_kde_share,
+            commands::tools::phone::tool_kde_ping,
+            commands::tools::phone::tool_kde_refresh,
+            commands::tools::speech::tool_whisper_status,
+            commands::tools::speech::tool_whisper_install,
+            commands::tools::speech::tool_whisper_model_download,
+            commands::tools::speech::tool_whisper_model_remove,
+            commands::tools::speech::tool_whisper_transcribe,
+            commands::tools::speech::tool_tts_voices,
+            commands::tools::speech::tool_tts_speak,
+            commands::tools::speech::tool_srt_translate,
+            commands::tools::speech::tool_dub,
+            commands::tools::ai::tool_keys_kinds,
+            commands::tools::ai::tool_keys_list,
+            commands::tools::ai::tool_keys_save,
+            commands::tools::ai::tool_keys_delete,
+            commands::tools::ai::tool_keys_test,
+            commands::tools::ai::tool_keys_balance,
+            commands::tools::ai::tool_keys_models,
+            commands::tools::ai::tool_keys_export,
+            commands::tools::ai::tool_keys_use,
+            commands::tools::ai::tool_mcp_status,
+            commands::tools::ai::tool_mcp_set_enabled,
+            commands::tools::ai::tool_mcp_selftest,
+            commands::tools::desktop::tool_hotkeys_get,
+            commands::tools::desktop::tool_hotkey_set,
+            commands::tools::desktop::tool_autoclick_start,
+            commands::tools::desktop::tool_autoclick_stop,
+            commands::tools::desktop::tool_autoclick_state,
+            commands::tools::desktop::tool_autoclick_mouse,
+            commands::tools::desktop::tool_dictation_devices,
+            commands::tools::desktop::tool_dictation_options,
+            commands::tools::desktop::tool_dictation_set_options,
+            commands::tools::desktop::tool_dictation_state,
+            commands::tools::desktop::tool_dictation_start,
+            commands::tools::desktop::tool_dictation_stop,
+            commands::tools::desktop::tool_record_sources,
+            commands::tools::desktop::tool_record_state,
+            commands::tools::desktop::tool_record_start,
+            commands::tools::desktop::tool_record_stop,
+            commands::tools::desktop::tool_record_save_replay,
+            commands::tools::desktop::tool_vs_status,
+            commands::tools::desktop::tool_vs_launch,
+            commands::tools::desktop::tool_vs_clone,
+            commands::tools::desktop::tool_vs_design,
+            commands::tools::desktop::tool_vs_isolate,
+            commands::tools::pdf::tool_pdf_status,
+            commands::tools::pdf::tool_pdf_info,
+            commands::tools::pdf::tool_pdf_merge,
+            commands::tools::pdf::tool_pdf_split,
+            commands::tools::pdf::tool_pdf_render,
+            commands::tools::pdf::tool_pdf_text,
+            commands::tools::pdf::tool_pdf_from_images,
+            commands::tools::pdf::tool_pdf_compress,
+            commands::tools::pdf::tool_pdf_sanitize,
+            commands::tools::pdf::tool_pdf_ocr,
+            commands::tools::pdf::tool_pdf_office,
+            commands::tools::pdf::tool_pdf_repair,
+            commands::tools::pdf::tool_pdf_redaction_check,
+            commands::tools::pdf::tool_pdf_password,
+            commands::tools::pdf::tool_pdf_watermark,
+            commands::tools::pdf::tool_pdf_crop,
+            commands::tools::pdf::tool_pdf_outline_read,
+            commands::tools::pdf::tool_pdf_outline_write,
+            commands::tools::system::tool_win_tweaks_status,
+            commands::tools::system::tool_win_tweak_apply,
+            commands::tools::system::tool_clean_scan,
+            commands::tools::system::tool_clean_run,
+            commands::tools::system::tool_disk_volumes,
+            commands::tools::system::tool_disk_scan,
+            commands::tools::system::tool_disk_trash,
+            commands::tools::system::tool_startup_list,
+            commands::tools::system::tool_startup_set,
+            commands::tools::system::tool_uninstall_list,
+            commands::tools::system::tool_uninstall_leftovers,
+            commands::tools::system::tool_uninstall_run,
+            commands::tools::system::tool_debloat_list,
+            commands::tools::system::tool_debloat_remove,
+            commands::tools::system::tool_debloat_restore,
+            commands::tools::system::tool_registry_scan,
+            commands::tools::system::tool_registry_fix,
+            commands::tools::system::tool_registry_backups_dir,
+            commands::tools::system::tool_updater_status,
+            commands::tools::system::tool_updater_upgrade,
+            commands::tools::youtube::tool_sponsorblock,
+            commands::tools::youtube::tool_ryd,
+            commands::tools::youtube::tool_yt_video_id,
+            commands::tools::youtube::tool_save_url,
+            commands::tools::x::tool_x_session,
+            commands::tools::x::tool_x_query_ids_refresh,
+            commands::tools::x::tool_x_cancel,
+            commands::tools::x::tool_x_post,
+            commands::tools::x::tool_x_thread,
+            commands::tools::x::tool_x_export_posts,
+            commands::tools::x::tool_x_export_users,
+            commands::tools::x::tool_x_render_posts,
+            commands::tools::x::tool_x_profile,
+            commands::tools::x::tool_x_profile_lookup,
+            commands::tools::x::tool_x_media,
+            commands::tools::x::tool_x_media_posts,
+            commands::tools::x::tool_x_search,
+            commands::tools::x::tool_x_trends,
+            commands::tools::x::tool_x_bookmarks_export,
+            commands::tools::x::tool_x_follows_audit,
+            commands::tools::x::tool_x_unfollow,
+            commands::tools::x::tool_x_whitelist_get,
+            commands::tools::x::tool_x_whitelist_set,
+            commands::tools::x::tool_x_archive_open,
+            commands::tools::x::tool_x_archive_export,
+            commands::tools::x::tool_x_grok_config,
+            commands::tools::x::tool_x_grok_config_set,
+            commands::tools::x::tool_x_grok_ask,
+            commands::tools::x::tool_x_data_url,
+            commands::tools::x::tool_x_save_data_url,
+            commands::tools::x::tool_x_write_text,
+            commands::tools::pinterest::tool_pin_inspect,
+            commands::tools::pinterest::tool_pin_list,
+            commands::tools::pinterest::tool_pin_related,
+            commands::tools::pinterest::tool_pin_boards_search,
+            commands::tools::pinterest::tool_pin_download,
+            commands::tools::pinterest::tool_pin_download_many,
+            commands::tools::pinterest::tool_pin_backup,
+            commands::tools::pinterest::tool_pin_dupes,
+            commands::tools::pinterest::tool_pin_unsave,
+            commands::tools::pinterest::tool_pin_palette,
+            commands::tools::pinterest::tool_pin_export,
+            commands::tools::pinterest::tool_pin_keywords,
+            commands::tools::pinterest::tool_pin_source,
+            commands::tools::pinterest::tool_pin_expand,
+            commands::tools::instagram::tool_ig_accounts,
+            commands::tools::instagram::tool_ig_whoami,
+            commands::tools::instagram::tool_ig_parse,
+            commands::tools::instagram::tool_ig_cancel,
+            commands::tools::instagram::tool_ig_post,
+            commands::tools::instagram::tool_ig_resolve,
+            commands::tools::instagram::tool_ig_download,
+            commands::tools::instagram::tool_ig_download_bulk,
+            commands::tools::instagram::tool_ig_profile,
+            commands::tools::instagram::tool_ig_friendship,
+            commands::tools::instagram::tool_ig_profile_media,
+            commands::tools::instagram::tool_ig_stories,
+            commands::tools::instagram::tool_ig_stories_tray,
+            commands::tools::instagram::tool_ig_highlights,
+            commands::tools::instagram::tool_ig_highlight_items,
+            commands::tools::instagram::tool_ig_story_viewers,
+            commands::tools::instagram::tool_ig_follow_lists,
+            commands::tools::instagram::tool_ig_whitelist_get,
+            commands::tools::instagram::tool_ig_whitelist_set,
+            commands::tools::instagram::tool_ig_actions_today,
+            commands::tools::instagram::tool_ig_actions,
+            commands::tools::instagram::tool_ig_resolve_users,
+            commands::tools::instagram::tool_ig_snapshot_take,
+            commands::tools::instagram::tool_ig_snapshots,
+            commands::tools::instagram::tool_ig_snapshot_diff,
+            commands::tools::instagram::tool_ig_snapshot_delete,
+            commands::tools::instagram::tool_ig_ghosts,
+            commands::tools::instagram::tool_ig_export,
+            commands::tools::instagram::tool_ig_write_csv,
+            commands::tools::instagram::tool_ig_read_text,
+            commands::tools::instagram::tool_ig_analytics,
+            commands::tools::instagram::tool_ig_hashtag,
+            commands::tools::instagram::tool_ig_comments,
+            commands::tools::instagram::tool_ig_likers,
+            commands::tools::instagram::tool_ig_giveaway,
+            commands::tools::instagram::tool_ig_publish,
+            commands::tools::instagram::tool_ig_publish_graph,
+            commands::tools::instagram::tool_ig_schedule_list,
+            commands::tools::instagram::tool_ig_schedule_add,
+            commands::tools::instagram::tool_ig_schedule_remove,
             commands::dependencies::check_ytdlp_available,
             commands::dependencies::install_dependency,
             commands::dependencies::dependency_archived_versions,
@@ -1008,11 +1448,162 @@ pub fn run() {
             commands::app_lifecycle::force_exit_app,
             commands::app_lifecycle::get_debug_info,
             commands::app_lifecycle::get_portable_info,
+            commands::tools::twitch::tool_tw_emotes,
+            commands::tools::twitch::tool_tw_chat_replay,
+            commands::tools::music::tool_music_playlist,
+            commands::tools::music::tool_lyrics_sync,
+            commands::tools::music::tool_music_history,
+            commands::tools::reddit::tool_rd_download,
+            commands::tools::reddit::tool_rd_thread,
+            commands::tools::reddit::tool_rd_gdpr,
+            commands::tools::images::tool_img_stitch,
+            commands::tools::images::tool_img_sprite,
+            commands::tools::bilibili::tool_bili_danmaku_export,
+            commands::tools::bilibili::tool_bili_danmaku_burn,
+            commands::tools::games::tool_switch_album,
+            commands::tools::games::tool_clip_organizer,
+            commands::tools::games::tool_protondb,
+            commands::tools::system::tool_hosts_read,
+            commands::tools::system::tool_hosts_apply,
+            commands::tools::system::tool_hosts_restore,
+            commands::tools::video::tool_sticker,
+            commands::tools::pdf::tool_pdf_markdown,
+            commands::tools::linkedin::tool_li_overview,
+            commands::tools::linkedin::tool_li_connections,
+            commands::tools::linkedin::tool_li_messages,
+            commands::tools::linkedin::tool_li_checklist,
+            // Fase 1 (perfil local) — f1-perfil-core
+            commands::profile::profile_get,
+            commands::profile::profile_set_nickname,
+            commands::profile::profile_set_skin,
+            commands::profile::profile_sign,
+            commands::profile::profile_export_public,
+            // Fase 6 (bench do mundo) — f6-bench
+            commands::world_bench::world_bench_report,
+            // Fase 2 (/llm) — f2-llm-commands, f2-wire-probe; Fase 5 (pet) — f5-pet-window
+            commands::llm::roster::llm_roster_list,
+            commands::llm::roster::llm_roster_create,
+            commands::llm::roster::llm_roster_update,
+            commands::llm::roster::llm_roster_delete,
+            commands::llm::roster::llm_roster_apply_template,
+            commands::llm::chat::llm_conversation_list,
+            commands::llm::chat::llm_conversation_get,
+            commands::llm::chat::llm_conversation_delete,
+            commands::llm::chat::llm_turn_start,
+            commands::llm::chat::llm_turn_cancel,
+            commands::llm::chat::llm_tool_answer,
+            commands::llm::chat::llm_tool_asks_pending,
+            commands::llm::chat::llm_workspace_set,
+            commands::llm::chat::llm_workspace_get,
+            commands::llm::chat::llm_turn_undo,
+            local_bridge_debug::debug_report,
+            commands::llm::skills::llm_skills_install_repo,
+            commands::llm::roster::llm_acp_detect,
+            commands::llm::roster::llm_acp_agent_create,
+            commands::llm::jobs::llm_jobs_list,
+            commands::llm::jobs::llm_job_get,
+            commands::llm::jobs::llm_job_submit,
+            commands::llm::jobs::llm_job_cancel,
+            commands::llm::jobs::llm_job_delete,
+            commands::llm::jobs::llm_loops_list,
+            commands::llm::jobs::llm_loop_create,
+            commands::llm::jobs::llm_loop_cancel,
+            commands::llm::jobs::llm_loop_delete,
+            commands::llm::jobs::llm_triggers_list,
+            commands::llm::jobs::llm_trigger_save,
+            commands::llm::jobs::llm_trigger_delete,
+            commands::llm::jobs::llm_trigger_fire,
+            commands::llm::chat::llm_permission_rules_get,
+            commands::llm::chat::llm_permission_rules_set,
+            commands::llm::chat::llm_switch_model,
+            commands::llm::models::llm_models_list,
+            commands::llm::observatory::llm_telemetry_snapshot,
+            commands::llm::prune::llm_prune_status,
+            commands::llm::prune::llm_prune_set_config,
+            commands::llm::prune::llm_prune_set_jev_key,
+            commands::llm::local::llm_local_status,
+            commands::llm::local::llm_local_install_llama,
+            commands::llm::local::llm_local_models,
+            commands::llm::local::llm_bridge_openai_enabled,
+            commands::llm::wire_probe::llm_wire_probe_run,
+            commands::llm::wire_probe::llm_wire_probe_last,
+            commands::pet::pet_open,
+            commands::pet::pet_close,
+            commands::pet::pet_set_corner,
+            commands::pet::pet_set_click_through,
+            commands::pet::pet_capabilities,
+            commands::pet::pet_emit_intent,
+            commands::pet::pet_set_ask_pending,
+            limits_strip::commands::limits_strip_get_prefs,
+            limits_strip::commands::limits_strip_set_prefs,
+            limits_strip::commands::limits_strip_open,
+            limits_strip::commands::limits_strip_close,
+            limits_strip::commands::limits_strip_state,
+            limits_strip::commands::limits_strip_refresh,
+            limits_strip::commands::limits_strip_set_expanded,
+            commands::tools::ai::tool_ai_keys_openrouter_pkce,
+            commands::tools::ai::tool_ai_keys_openrouter_pkce_finish,
+            commands::llm::roster::llm_roster_templates,
+            commands::llm::local::llm_local_download_model,
+            commands::llm::local::llm_local_start_llama,
+            commands::llm::local::llm_local_stop_llama,
+            // Rodada 3: Fase 3 (MCP, skills) e Fase 4 (contas)
+            commands::llm::mcp::llm_mcp_list,
+            commands::llm::mcp::llm_mcp_upsert,
+            commands::llm::mcp::llm_mcp_remove,
+            commands::llm::mcp::llm_mcp_test,
+            commands::llm::mcp::llm_mcp_tools,
+            commands::llm::mcp::llm_mcp_grant,
+            commands::llm::skills::llm_skills_list,
+            commands::llm::skills::llm_skills_install_dir,
+            commands::llm::skills::llm_skills_install_zip,
+            commands::llm::skills::llm_skills_install_git,
+            commands::llm::skills::llm_skills_remove,
+            commands::llm::skills::llm_skills_catalog,
+            commands::llm::skills::llm_skills_install_catalog,
+            commands::llm::skills::llm_skills_confirm_install,
+            commands::llm::skills::llm_skills_discard_install,
+            commands::llm::skills::llm_skills_pending,
+            commands::llm::skills::llm_skills_scanner,
+            commands::llm::accounts::llm_accounts_list,
+            commands::llm::accounts::llm_accounts_detect,
+            commands::llm::accounts::llm_accounts_create,
+            commands::llm::accounts::llm_accounts_remove,
+            commands::llm::accounts::llm_accounts_login,
+            commands::llm::accounts::llm_accounts_set_disabled,
+            commands::llm::accounts::llm_cli_usage_report,
+            commands::llm::accounts::llm_accounts_set_sandbox,
+            commands::llm::accounts::llm_accounts_activate,
+            commands::llm::accounts::llm_accounts_set_chain,
+            commands::llm::accounts::llm_accounts_rotation,
+            // Fase 7 (mundo) — f7-world-bridge
+            commands::world::session::world_exists,
+            commands::world::session::world_create,
+            commands::world::session::world_open,
+            commands::world::house::house_status,
+            commands::world::house::house_open,
+            commands::world::house::house_close,
+            commands::world::house::house_join,
+            commands::world::house::house_leave,
+            commands::world::house::house_input,
+            commands::world::house::house_chat,
+            commands::world::session::world_close,
+            commands::world::session::world_set_visible,
+            commands::world::session::world_resync,
+            commands::world::session::world_activity,
+            commands::world::demo::world_demo,
+            commands::world::session::world_delete,
+            commands::world::input::world_input,
+            commands::world::tier::world_tier_get,
+            commands::world::tier::world_tier_set,
+            commands::world::tier::world_calibration_save,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
             if let tauri::RunEvent::ExitRequested { .. } = &event {
+                // The managed llama-server dies with the app (phase 2).
+                tauri::async_runtime::block_on(omniget_core::core::llm::local_servers::stop());
                 let state = app_handle.state::<AppState>();
                 let session_mutex = state.torrent_session.clone();
                 tauri::async_runtime::block_on(async move {

@@ -1,0 +1,146 @@
+{
+  "initialize": {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2025-06-18",
+        "capabilities": {},
+        "clientInfo": {
+          "name": "OmniGet",
+          "version": "record"
+        }
+      }
+    },
+    "result": {
+      "protocolVersion": "2025-06-18",
+      "capabilities": {
+        "resources": {},
+        "tools": {}
+      },
+      "serverInfo": {
+        "name": "@tokenizin/mcp-npx-fetch",
+        "version": "0.13.37"
+      }
+    }
+  },
+  "tools_list": {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "tools/list",
+      "params": {}
+    },
+    "result": {
+      "tools": [
+        {
+          "name": "fetch_html",
+          "description": "Fetch a website and return the content as HTML",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "URL of the website to fetch"
+              },
+              "headers": {
+                "type": "object",
+                "description": "Optional headers to include in the request"
+              }
+            },
+            "required": [
+              "url"
+            ]
+          }
+        },
+        {
+          "name": "fetch_markdown",
+          "description": "Fetch a website and return the content as Markdown",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "URL of the website to fetch"
+              },
+              "headers": {
+                "type": "object",
+                "description": "Optional headers to include in the request"
+              }
+            },
+            "required": [
+              "url"
+            ]
+          }
+        },
+        {
+          "name": "fetch_txt",
+          "description": "Fetch a website, return the content as plain text (no HTML)",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "URL of the website to fetch"
+              },
+              "headers": {
+                "type": "object",
+                "description": "Optional headers to include in the request"
+              }
+            },
+            "required": [
+              "url"
+            ]
+          }
+        },
+        {
+          "name": "fetch_json",
+          "description": "Fetch a JSON file from a URL",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "URL of the JSON to fetch"
+              },
+              "headers": {
+                "type": "object",
+                "description": "Optional headers to include in the request"
+              }
+            },
+            "required": [
+              "url"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "tools_call": {
+    "request": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "method": "tools/call",
+      "params": {
+        "name": "fetch_txt",
+        "arguments": {
+          "url": "https://example.com"
+        }
+      }
+    },
+    "response": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Example DomainThis domain is for use in documentation examples without needing permission. Avoid use in operations.Learn more"
+          }
+        ],
+        "isError": false
+      },
+      "jsonrpc": "2.0",
+      "id": 3
+    }
+  }
+}

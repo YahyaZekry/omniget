@@ -1,3 +1,7 @@
+<script lang="ts" module>
+  export type ToolSection = "metadata" | "thumbnails" | "subs" | "cc" | "lc" | "workshop";
+</script>
+
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { open as openDialog } from "@tauri-apps/plugin-dialog";
@@ -5,6 +9,13 @@
   import { showToast } from "$lib/stores/toast-store.svelte";
   import { getSettings } from "$lib/stores/settings-store.svelte";
   import SubtitleWorkshop from "$components/downloads/SubtitleWorkshop.svelte";
+
+  /**
+   * A seção Tools monta uma ferramenta por página; a aba Tools de Downloads
+   * continua mostrando todas. Sem `only`, nada muda.
+   */
+  let { only }: { only?: ToolSection[] } = $props();
+  const show = (s: ToolSection) => !only || only.includes(s);
 
   let wsOpen = $state(false);
 
@@ -415,11 +426,14 @@
 </script>
 
 <div class="tools">
+  {#if show("metadata")}
   <section class="tool-card">
+    {#if !only}
     <div class="tool-head">
       <h3 class="tool-title">{$t("tools.metadata_title")}</h3>
       <p class="tool-desc">{$t("tools.metadata_desc")}</p>
     </div>
+    {/if}
     <div class="tool-row">
       <input
         class="tool-input"
@@ -441,12 +455,16 @@
       </button>
     </div>
   </section>
+  {/if}
 
+  {#if show("thumbnails")}
   <section class="tool-card">
+    {#if !only}
     <div class="tool-head">
       <h3 class="tool-title">{$t("tools.thumbnails_title")}</h3>
       <p class="tool-desc">{$t("tools.thumbnails_desc")}</p>
     </div>
+    {/if}
     <div class="tool-row">
       <input
         class="tool-input"
@@ -485,12 +503,16 @@
       </div>
     {/if}
   </section>
+  {/if}
 
+  {#if show("subs")}
   <section class="tool-card">
+    {#if !only}
     <div class="tool-head">
       <h3 class="tool-title">{$t("tools.subs_title")}</h3>
       <p class="tool-desc">{$t("tools.subs_desc")}</p>
     </div>
+    {/if}
     <div class="tool-row">
       <input
         class="tool-input"
@@ -564,12 +586,16 @@
       </div>
     {/if}
   </section>
+  {/if}
 
+  {#if show("cc")}
   <section class="tool-card">
+    {#if !only}
     <div class="tool-head">
       <h3 class="tool-title">{$t("tools.cc_title")}</h3>
       <p class="tool-desc">{$t("tools.cc_desc")}</p>
     </div>
+    {/if}
     <div class="tool-row">
       <input
         class="tool-input"
@@ -648,12 +674,16 @@
       </div>
     {/if}
   </section>
+  {/if}
 
+  {#if show("lc")}
   <section class="tool-card">
+    {#if !only}
     <div class="tool-head">
       <h3 class="tool-title">{$t("tools.lc_title")}</h3>
       <p class="tool-desc">{$t("tools.lc_desc")}</p>
     </div>
+    {/if}
     <div class="tool-row">
       <input
         class="tool-input"
@@ -700,18 +730,23 @@
       </div>
     {/if}
   </section>
+  {/if}
 
+  {#if show("workshop")}
   <section class="tool-card">
+    {#if !only}
     <div class="tool-head">
       <h3 class="tool-title">{$t("downloads.sw.title")}</h3>
       <p class="tool-desc">{$t("downloads.sw.tool_desc")}</p>
     </div>
+    {/if}
     <div class="tool-row">
       <button class="tool-btn" type="button" onclick={() => (wsOpen = true)}>
         {$t("downloads.sw.open")}
       </button>
     </div>
   </section>
+  {/if}
 </div>
 
 {#if wsOpen}
@@ -731,7 +766,7 @@
     gap: 12px;
     padding: 16px 18px;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: none;
     border-radius: var(--radius-md, 12px);
   }
   .tool-head {
@@ -761,7 +796,7 @@
     min-width: 220px;
     padding: 8px 12px;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius, 8px);
     color: var(--secondary);
     font: inherit;
@@ -797,7 +832,7 @@
   .thumb-chip {
     padding: 6px 12px;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: 999px;
     color: var(--secondary);
     font: inherit;
@@ -829,7 +864,7 @@
   .tool-select {
     padding: 7px 10px;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius, 8px);
     color: var(--secondary);
     font: inherit;
@@ -843,7 +878,7 @@
   .tool-btn.ghost {
     background: transparent;
     color: var(--secondary);
-    border: 1px solid var(--input-border);
+    border: none;
   }
   .tool-btn.ghost:hover:not(:disabled) {
     border-color: var(--accent);
@@ -853,7 +888,7 @@
     width: 88px;
     padding: 7px 10px;
     background: var(--button);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius, 8px);
     color: var(--secondary);
     font: inherit;
@@ -885,7 +920,7 @@
     gap: 10px;
     align-items: baseline;
     padding: 5px 0;
-    border-bottom: 1px solid color-mix(in oklab, var(--border) 40%, transparent);
+    border-bottom: none;
     font-size: var(--text-sm);
   }
   .cc-author {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
+  import { t } from "$lib/i18n";
 
   type Props = {
     source: string;
@@ -132,7 +133,7 @@
       type="button"
       class="abc-toggle"
       onclick={toggleMode}
-      title={mode === "render" ? "Editar source" : "Voltar pra partitura"}
+      title={mode === "render" ? $t("study.notes.nb.edit_source") : $t("study.notes.nb.back_to_score")}
     >
       {mode === "render" ? "‹/›" : "▶"}
     </button>
@@ -146,7 +147,7 @@
       onblur={onSourceBlur}
       spellcheck="false"
       rows={Math.max(6, editingValue.split("\n").length)}
-      aria-label="Source da partitura (notação ABC)"
+      aria-label={$t("study.notes.nb.abc_source_aria")}
     ></textarea>
   {:else if renderState.kind === "idle"}
     <p class="abc-state">Sem source. Clique em ‹/› para editar.</p>
@@ -156,7 +157,7 @@
     <div class="abc-error">
       <p class="abc-error-msg">erro: {renderState.message}</p>
       <button type="button" class="abc-edit-btn" onclick={toggleMode}
-        >Editar source</button>
+        >{$t("study.notes.nb.edit_source")}</button>
     </div>
   {/if}
 
@@ -217,7 +218,7 @@
     font-size: 12px;
     line-height: 1.5;
     background: var(--surface);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     padding: 8px 10px;
     color: var(--text);
@@ -250,10 +251,10 @@
     flex-direction: column;
     gap: 6px;
     padding: 6px 8px;
-    background: color-mix(in oklab, var(--error, #e74c3c) 10%, transparent);
-    border: 1px solid color-mix(in oklab, var(--error, #e74c3c) 30%, transparent);
+    background: color-mix(in oklab, var(--error) 10%, transparent);
+    border: 1px solid color-mix(in oklab, var(--error) 30%, transparent);
     border-radius: var(--border-radius);
-    color: var(--error, #e74c3c);
+    color: var(--error);
   }
   .abc-error-msg {
     margin: 0;

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { notesUndoListOps, notesUndoLastOp, type OpSummary } from "$lib/notes-bridge";
+import { t } from "$lib/i18n";
 
   type Props = {
     onToast: (kind: "ok" | "err", msg: string) => void;
@@ -54,7 +55,7 @@
 
 <details class="op-log" ontoggle={onToggle}>
   <summary>
-    <span>Histórico de operações (op-log)</span>
+    <span>{$t("study.notes.oplog.title")}</span>
     <span class="caret" aria-hidden="true">▸</span>
   </summary>
 
@@ -63,13 +64,13 @@
       <button type="button" class="btn ghost sm" onclick={refresh} disabled={loading}>
         {loading ? "Carregando…" : "Atualizar"}
       </button>
-      <span class="hint">Últimas 50 operações. Você pode desfazer ops antigas, não só a última.</span>
+      <span class="hint">{$t("study.notes.oplog.hint")}</span>
     </div>
 
     {#if !loaded && !loading}
       <p class="muted">Expanda para carregar.</p>
     {:else if ops.length === 0}
-      <p class="muted">Sem operações registradas ainda.</p>
+      <p class="muted">{$t("study.notes.oplog.empty")}</p>
     {:else}
       <ul class="list">
         {#each ops as op (op.op_id)}
@@ -85,7 +86,7 @@
               class="btn ghost sm"
               onclick={() => undoOp(op.op_id)}
               disabled={op.undone || busy === op.op_id}
-              title={op.undone ? "Já desfeito" : "Desfazer esta operação"}
+              title={op.undone ? $t("study.notes.nb.already_undone") : $t("study.notes.nb.undo_op")}
             >
               {busy === op.op_id ? "…" : "Desfazer"}
             </button>
@@ -98,7 +99,7 @@
 
 <style>
   .op-log {
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     background: var(--bg);
   }
@@ -156,7 +157,7 @@
     align-items: center;
     padding: 6px 10px;
     background: var(--surface);
-    border: 1px solid color-mix(in oklab, var(--input-border) 50%, transparent);
+    border: none;
     border-radius: var(--border-radius);
     font-size: 12px;
   }
@@ -198,7 +199,7 @@
   .btn {
     padding: 4px 10px;
     border-radius: var(--border-radius);
-    border: 1px solid var(--input-border);
+    border: none;
     background: transparent;
     color: var(--text);
     font: inherit;

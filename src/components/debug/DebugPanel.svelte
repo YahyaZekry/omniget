@@ -69,8 +69,8 @@
 
   function levelColor(level: LogLevel): string {
     switch (level) {
-      case "info": return "var(--blue)";
-      case "warn": return "var(--orange)";
+      case "info": return "var(--accent)";
+      case "warn": return "var(--warning)";
       case "error": return "var(--error)";
     }
   }
@@ -161,7 +161,7 @@
     min-height: 180px;
     max-height: 60vh;
     background: var(--popup-bg);
-    border-top: 1px solid var(--content-border);
+    border-top: none;
     display: flex;
     flex-direction: column;
     z-index: 100;
@@ -173,7 +173,7 @@
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    border-bottom: 1px solid var(--content-border);
+    border-bottom: none;
     flex-shrink: 0;
   }
 
@@ -189,7 +189,7 @@
     padding: 3px 8px;
     background: var(--button);
     color: var(--secondary);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: calc(var(--border-radius) - 4px);
     cursor: pointer;
   }
@@ -210,7 +210,7 @@
     padding: 4px 10px;
     background: var(--button);
     color: var(--secondary);
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: calc(var(--border-radius) - 4px);
     cursor: pointer;
   }
@@ -280,7 +280,7 @@
   }
 
   .debug-warn {
-    background: color-mix(in srgb, var(--orange) 6%, transparent) !important;
+    background: color-mix(in srgb, var(--warning) 6%, transparent) !important;
   }
 
   .debug-time {
@@ -293,7 +293,7 @@
   .debug-level {
     font-size: 10px;
     font-weight: 600;
-    color: #fff;
+    color: var(--on-status);
     padding: 1px 5px;
     border-radius: 3px;
     flex-shrink: 0;

@@ -1,3 +1,4 @@
+pub mod agent;
 pub mod batch;
 pub mod common;
 pub mod download;

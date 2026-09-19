@@ -160,7 +160,7 @@
     display: flex;
     justify-content: center;
     padding: calc(var(--padding) / 2) 0;
-    color: var(--blue);
+    color: var(--accent);
   }
 
   .code-section {
@@ -237,7 +237,7 @@
     font-size: 13px;
     font-weight: 500;
     background: transparent;
-    border: 1px solid var(--input-border);
+    border: none;
     border-radius: var(--border-radius);
     color: var(--gray);
     cursor: pointer;

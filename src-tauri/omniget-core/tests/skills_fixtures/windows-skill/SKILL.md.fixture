@@ -1,0 +1,8 @@
+﻿---
+name: windows-skill
+description: Saved with CRLF endings and a BOM, the way a Windows editor leaves a file. Use to prove the parser does not care.
+---
+
+# Windows skill
+
+Body with CRLF.

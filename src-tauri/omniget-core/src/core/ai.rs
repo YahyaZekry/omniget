@@ -15,16 +15,30 @@ pub enum AiProvider {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct AiConfig {
+    /// Which wire `chat()` speaks. Derived from [`AiConfig::kind`] since the LLM
+    /// expansion (`set_from_key`), not chosen by hand.
     #[serde(default)]
     pub provider: AiProvider,
-    #[serde(default)]
+    /// Never serialised: `ai_config.json` holds metadata only and the key lives
+    /// in the secret store. Deserialising still works, which is how a file
+    /// written by an older build is read once and migrated.
+    #[serde(default, skip_serializing)]
     pub openai_key: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub anthropic_key: String,
     #[serde(default)]
     pub local_base_url: String,
     #[serde(default)]
     pub model: String,
+    /// The `ai_keys::Kind::id` behind this config ("openai", "openrouter",
+    /// "gemini", …) — the `ProviderId` the LLM layer routes on. Empty on a
+    /// config that predates the expansion.
+    #[serde(default)]
+    pub kind: String,
+    /// The `ai_keys` entry this came from, so the vault and the app config stop
+    /// drifting apart.
+    #[serde(default)]
+    pub key_id: String,
 }
 
 // Sent to the frontend instead of AiConfig: key material is replaced with
@@ -32,6 +46,9 @@ pub struct AiConfig {
 #[derive(Clone, Debug, Serialize)]
 pub struct AiConfigView {
     pub provider: AiProvider,
+    /// The `ai_keys` provider id behind `provider`; empty before the first
+    /// `use_in_app`.
+    pub kind: String,
     pub model: String,
     pub local_base_url: String,
     pub has_openai_key: bool,
@@ -42,6 +59,7 @@ impl AiConfig {
     pub fn view(&self) -> AiConfigView {
         AiConfigView {
             provider: self.provider,
+            kind: self.kind.clone(),
             model: self.model.clone(),
             local_base_url: self.local_base_url.clone(),
             has_openai_key: !self.openai_key.is_empty(),
@@ -69,17 +87,54 @@ fn file_path() -> Option<std::path::PathBuf> {
     crate::core::paths::app_data_dir().map(|d| d.join(AI_CONFIG_FILE))
 }
 
+/// Read the config and put the keys back on it from the secret store. A file
+/// written before the LLM expansion still carries them in plain text: that is
+/// migrated here, once, with a 0600 backup beside the file.
 fn load_from_disk() -> AiConfig {
     let Some(path) = file_path() else {
         return AiConfig::default();
     };
-    match std::fs::read_to_string(&path) {
+    let mut cfg: AiConfig = match std::fs::read_to_string(&path) {
         Ok(c) => serde_json::from_str(&c).unwrap_or_default(),
         Err(_) => AiConfig::default(),
-    }
+    };
+    // The migration takes the keys off `cfg` and into the store, so either way
+    // the hydration below is what puts them back.
+    crate::core::tools::ai_keys::migrate::migrate_config_file(&path, &mut cfg);
+    hydrate_keys(&mut cfg);
+    cfg
 }
 
+fn stored_key(account: &str) -> String {
+    use crate::core::secrets::{self, AI_KEYS};
+    secrets::get(AI_KEYS, account)
+        .unwrap_or_else(|e| {
+            tracing::warn!("[ai] could not read {}: {}", account, e);
+            None
+        })
+        .unwrap_or_default()
+}
+
+fn hydrate_keys(cfg: &mut AiConfig) {
+    use crate::core::tools::ai_keys::migrate;
+    cfg.openai_key = stored_key(migrate::APP_OPENAI_ACCOUNT);
+    cfg.anthropic_key = stored_key(migrate::APP_ANTHROPIC_ACCOUNT);
+}
+
+/// Write the config. The keys go to the secret store and never to the JSON —
+/// `openai_key`/`anthropic_key` are `skip_serializing`, so the file cannot
+/// carry them even by accident.
 fn write_to_disk(cfg: &AiConfig) {
+    use crate::core::secrets::{self, AI_KEYS};
+    use crate::core::tools::ai_keys::migrate;
+    for (account, value) in [
+        (migrate::APP_OPENAI_ACCOUNT, cfg.openai_key.trim()),
+        (migrate::APP_ANTHROPIC_ACCOUNT, cfg.anthropic_key.trim()),
+    ] {
+        if let Err(e) = secrets::put_or_delete(AI_KEYS, account, value) {
+            tracing::warn!("[ai] could not store {}: {}", account, e);
+        }
+    }
     let Some(path) = file_path() else { return };
     let Some(parent) = path.parent() else { return };
     if let Err(e) = std::fs::create_dir_all(parent) {
@@ -139,6 +194,62 @@ pub fn set(
     guard.clone()
 }
 
+/// Which wire an `ai_keys` kind speaks. `Local` is not a downgrade: it is the
+/// OpenAI dialect against a base URL that is not api.openai.com.
+pub fn provider_for_kind(kind: &str) -> AiProvider {
+    match crate::core::tools::ai_keys::kind_of(kind).wire {
+        "anthropic" => AiProvider::Anthropic,
+        _ if kind == "openai" => AiProvider::Openai,
+        _ => AiProvider::Local,
+    }
+}
+
+impl AiConfig {
+    /// The `ProviderId` this config represents. Falls back to the wire when the
+    /// kind is empty (a config from before the expansion) or stale (the user
+    /// switched provider by hand in Settings).
+    pub fn provider_id(&self) -> String {
+        if !self.kind.is_empty() && provider_for_kind(&self.kind) == self.provider {
+            return self.kind.clone();
+        }
+        match self.provider {
+            AiProvider::None => String::new(),
+            AiProvider::Openai => "openai".to_string(),
+            AiProvider::Anthropic => "anthropic".to_string(),
+            AiProvider::Local => "custom".to_string(),
+        }
+    }
+}
+
+/// Point the app's AI at an `ai_keys` entry. The entry's kind is recorded as it
+/// is and the wire is derived from it, so a provider is no longer flattened to
+/// "Local" and forgotten.
+pub fn set_from_key(
+    kind: &str,
+    key_id: &str,
+    model: String,
+    base_url: String,
+    key: String,
+) -> AiConfig {
+    let provider = provider_for_kind(kind);
+    let mut guard = store().lock().unwrap();
+    guard.provider = provider;
+    guard.kind = kind.to_string();
+    guard.key_id = key_id.to_string();
+    guard.model = model.trim().to_string();
+    guard.local_base_url = match provider {
+        // The OpenAI and Anthropic wires have a fixed endpoint in `chat()`.
+        AiProvider::Openai | AiProvider::Anthropic | AiProvider::None => String::new(),
+        AiProvider::Local => base_url.trim().trim_end_matches('/').to_string(),
+    };
+    match provider {
+        AiProvider::Anthropic => guard.anthropic_key = key.trim().to_string(),
+        _ => guard.openai_key = key.trim().to_string(),
+    }
+    write_to_disk(&guard);
+    guard.clone()
+}
+
 fn http_client() -> Result<reqwest::Client, String> {
     let builder = reqwest::Client::builder().timeout(std::time::Duration::from_secs(120));
     crate::core::http_client::apply_global_proxy(builder)
@@ -146,116 +257,152 @@ fn http_client() -> Result<reqwest::Client, String> {
         .map_err(|e| format!("HTTP client error: {}", e))
 }
 
-pub async fn chat(system: &str, user: &str) -> Result<String, String> {
-    let cfg = get();
-    if cfg.model.is_empty() {
-        return Err("No AI model configured".to_string());
-    }
+/// The `Provider` behind the app's configured account. Built per turn because
+/// the config can change between calls, and shared with `core::llm`: the app
+/// and the agents speak through the same client, the same retry policy and the
+/// same SSE parser.
+pub fn provider_from_config(
+    cfg: &AiConfig,
+) -> Result<std::sync::Arc<dyn crate::core::llm::providers::Provider>, String> {
+    use crate::core::llm::providers::anthropic::AnthropicProvider;
+    use crate::core::llm::providers::openai_compat::OpenAiCompat;
+    use crate::core::llm::types::ProviderId;
+
+    let id = ProviderId::new(cfg.provider_id());
     match cfg.provider {
         AiProvider::None => Err("AI is not configured".to_string()),
+        AiProvider::Anthropic => {
+            AnthropicProvider::new(cfg.local_base_url.clone(), cfg.anthropic_key.clone())
+                .map(|p| {
+                    std::sync::Arc::new(p)
+                        as std::sync::Arc<dyn crate::core::llm::providers::Provider>
+                })
+                .map_err(|e| e.to_string())
+        }
         AiProvider::Openai => {
-            openai_chat(
-                "https://api.openai.com/v1/chat/completions",
-                &cfg.openai_key,
-                &cfg.model,
-                system,
-                user,
-            )
-            .await
+            OpenAiCompat::new(id, "https://api.openai.com/v1", cfg.openai_key.clone())
+                .map(|p| {
+                    std::sync::Arc::new(p)
+                        as std::sync::Arc<dyn crate::core::llm::providers::Provider>
+                })
+                .map_err(|e| e.to_string())
         }
         AiProvider::Local => {
             if cfg.local_base_url.is_empty() {
                 return Err("No local endpoint configured".to_string());
             }
-            let endpoint = format!("{}/chat/completions", cfg.local_base_url);
-            openai_chat(&endpoint, &cfg.openai_key, &cfg.model, system, user).await
+            OpenAiCompat::new(id, cfg.local_base_url.clone(), cfg.openai_key.clone())
+                .map(|p| {
+                    std::sync::Arc::new(p)
+                        as std::sync::Arc<dyn crate::core::llm::providers::Provider>
+                })
+                .map_err(|e| e.to_string())
         }
-        AiProvider::Anthropic => anthropic_chat(&cfg.anthropic_key, &cfg.model, system, user).await,
     }
 }
 
-async fn openai_chat(
-    endpoint: &str,
-    key: &str,
-    model: &str,
-    system: &str,
-    user: &str,
-) -> Result<String, String> {
-    let client = http_client()?;
-    let body = serde_json::json!({
-        "model": model,
-        "messages": [
-            { "role": "system", "content": system },
-            { "role": "user", "content": user },
-        ],
-    });
-    let mut req = client.post(endpoint).json(&body);
-    if !key.is_empty() {
-        req = req.bearer_auth(key);
+/// A turn that costs nothing: a server on this machine, or Ollama.
+fn is_free_endpoint(cfg: &AiConfig) -> bool {
+    if cfg.kind == "ollama" {
+        return true;
     }
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| format!("Request failed: {}", e))?;
-    let status = resp.status();
-    let text = resp
-        .text()
-        .await
-        .map_err(|e| format!("Read body failed: {}", e))?;
-    if !status.is_success() {
-        return Err(format!("AI error ({})", status.as_u16()));
-    }
-    let json: serde_json::Value =
-        serde_json::from_str(&text).map_err(|e| format!("Bad JSON: {}", e))?;
-    json.get("choices")
-        .and_then(|c| c.get(0))
-        .and_then(|c| c.get("message"))
-        .and_then(|m| m.get("content"))
-        .and_then(|c| c.as_str())
-        .map(|s| s.trim().to_string())
-        .ok_or_else(|| "Empty AI response".to_string())
+    let base = cfg.local_base_url.to_ascii_lowercase();
+    base.contains("://localhost")
+        || base.contains("://127.0.0.1")
+        || base.contains("://[::1]")
+        || base.contains("://0.0.0.0")
 }
 
-async fn anthropic_chat(
-    key: &str,
-    model: &str,
+/// Single-shot chat kept for the whole app (`humanize`, `ai_test`,
+/// `ai_summarize_url`, legendas, coach da League): the signature is the same as
+/// before the LLM expansion, but underneath it is now one `TurnRequest` on the
+/// `core::llm` stack — streaming, retry with backoff, cancellation and the
+/// provider-reported `usage`. Anthropic no longer truncates at 1024 tokens.
+pub async fn chat(system: &str, user: &str) -> Result<String, String> {
+    let cfg = get();
+    if cfg.model.is_empty() {
+        return Err("No AI model configured".to_string());
+    }
+    chat_with(
+        &cfg,
+        system,
+        user,
+        tokio_util::sync::CancellationToken::new(),
+    )
+    .await
+}
+
+/// `chat` against an explicit config and cancellation token.
+pub async fn chat_with(
+    cfg: &AiConfig,
     system: &str,
     user: &str,
+    cancel: tokio_util::sync::CancellationToken,
 ) -> Result<String, String> {
-    if key.is_empty() {
-        return Err("No Anthropic key configured".to_string());
+    use crate::core::llm::types::{
+        GenParams, Message, ModelRef, ProviderId, Role, TurnEvent, TurnRequest,
+    };
+    use futures::StreamExt;
+
+    let provider = provider_from_config(cfg)?;
+    let mut messages = Vec::with_capacity(2);
+    if !system.trim().is_empty() {
+        messages.push(Message::text(Role::System, system));
     }
-    let client = http_client()?;
-    let body = serde_json::json!({
-        "model": model,
-        "max_tokens": 1024,
-        "system": system,
-        "messages": [ { "role": "user", "content": user } ],
-    });
-    let resp = client
-        .post("https://api.anthropic.com/v1/messages")
-        .header("x-api-key", key)
-        .header("anthropic-version", "2023-06-01")
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| format!("Request failed: {}", e))?;
-    let status = resp.status();
-    let text = resp
-        .text()
-        .await
-        .map_err(|e| format!("Read body failed: {}", e))?;
-    if !status.is_success() {
-        return Err(format!("AI error ({})", status.as_u16()));
+    messages.push(Message::text(Role::User, user));
+    let req = TurnRequest {
+        model: ModelRef {
+            provider: ProviderId::new(cfg.provider_id()),
+            model: cfg.model.clone(),
+        },
+        messages,
+        tools: Vec::new(),
+        params: GenParams::default(),
+        cancel,
+        agent_id: None,
+    };
+
+    let mut stream = provider.turn(req).await.map_err(|e| e.to_string())?;
+    let mut text = String::new();
+    let mut reported: Option<crate::core::llm::types::Usage> = None;
+    let mut failure: Option<crate::core::llm::error::LlmError> = None;
+    while let Some(ev) = stream.next().await {
+        match ev {
+            TurnEvent::TextDelta { text: t } => text.push_str(&t),
+            TurnEvent::Usage { usage } => reported = Some(usage),
+            TurnEvent::Error { error } => failure = Some(error),
+            _ => {}
+        }
     }
-    let json: serde_json::Value =
-        serde_json::from_str(&text).map_err(|e| format!("Bad JSON: {}", e))?;
-    json.get("content")
-        .and_then(|c| c.get(0))
-        .and_then(|c| c.get("text"))
-        .and_then(|t| t.as_str())
-        .map(|s| s.trim().to_string())
-        .ok_or_else(|| "Empty AI response".to_string())
+
+    // Ledger de custo (Tools → Custos de IA), agora com cache e latência.
+    let free = is_free_endpoint(cfg);
+    let mut entry =
+        crate::core::tools::usage::UsageEntry::now("chat", &cfg.provider_id(), &cfg.model);
+    if let Some(u) = &reported {
+        entry.input_tokens = u.input_tokens as u64;
+        entry.output_tokens = u.output_tokens as u64;
+        entry.cache_read_tokens = u.cache_read_tokens as u64;
+        entry.cache_write_tokens = u.cache_write_tokens as u64;
+        entry.first_token_ms = u.first_token_ms;
+        entry.cost_usd = if free { Some(0.0) } else { u.cost_usd };
+    } else if free {
+        entry.cost_usd = Some(0.0);
+    }
+    if entry.input_tokens > 0 || entry.output_tokens > 0 || !text.is_empty() {
+        crate::core::tools::usage::record_entry(entry);
+    }
+
+    if let Some(e) = failure {
+        if text.trim().is_empty() {
+            return Err(e.to_string());
+        }
+    }
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("Empty AI response".to_string());
+    }
+    Ok(trimmed.to_string())
 }
 
 // Whisper-style transcription via the OpenAI-compatible audio endpoint. Only
@@ -314,6 +461,24 @@ pub async fn transcribe(audio_path: &std::path::Path) -> Result<String, String> 
     if !status.is_success() {
         return Err(format!("Transcription error ({})", status.as_u16()));
     }
+    // Ledger: o Whisper é cobrado por minuto de áudio, então a linha leva
+    // `seconds` (do ffprobe, melhor esforço) e os caracteres transcritos —
+    // os dois campos que existiam no `UsageEntry` e nunca eram escritos.
+    let seconds = crate::core::ffmpeg::probe(audio_path)
+        .await
+        .map(|p| p.duration_seconds)
+        .unwrap_or(0.0);
+    crate::core::tools::usage::record_entry(crate::core::tools::usage::UsageEntry {
+        characters: text.chars().count() as u64,
+        seconds,
+        cost_usd: if endpoint.starts_with("https://api.openai.com") {
+            None
+        } else {
+            Some(0.0)
+        },
+        ..crate::core::tools::usage::UsageEntry::now("transcribe", &cfg.provider_id(), "whisper-1")
+    });
+
     let trimmed = text.trim();
     if trimmed.is_empty() {
         return Err("Empty transcription".to_string());
@@ -410,15 +575,41 @@ mod tests {
         let cfg = AiConfig {
             provider: AiProvider::Openai,
             openai_key: "secret".to_string(),
-            anthropic_key: String::new(),
-            local_base_url: String::new(),
             model: "m".to_string(),
+            ..Default::default()
         };
         let v = cfg.view();
         assert!(v.has_openai_key);
         assert!(!v.has_anthropic_key);
         let json = serde_json::to_string(&v).unwrap();
         assert!(!json.contains("secret"));
+        // ...and neither does what goes to ai_config.json.
+        let json = serde_json::to_string(&cfg).unwrap();
+        assert!(!json.contains("secret"), "{json}");
+    }
+
+    /// `AiProvider` is a wire, `kind` is the provider. A stale kind (the user
+    /// switched provider by hand afterwards) must not be reported.
+    #[test]
+    fn the_provider_id_follows_the_kind_while_it_matches_the_wire() {
+        assert_eq!(provider_for_kind("openai"), AiProvider::Openai);
+        assert_eq!(provider_for_kind("anthropic"), AiProvider::Anthropic);
+        assert_eq!(provider_for_kind("openrouter"), AiProvider::Local);
+        assert_eq!(provider_for_kind("gemini"), AiProvider::Local);
+
+        let mut cfg = AiConfig {
+            provider: AiProvider::Local,
+            kind: "openrouter".to_string(),
+            ..Default::default()
+        };
+        assert_eq!(cfg.provider_id(), "openrouter");
+        cfg.provider = AiProvider::Anthropic;
+        assert_eq!(cfg.provider_id(), "anthropic");
+        cfg.kind = String::new();
+        cfg.provider = AiProvider::Local;
+        assert_eq!(cfg.provider_id(), "custom");
+        cfg.provider = AiProvider::None;
+        assert_eq!(cfg.provider_id(), "");
     }
 
     #[test]

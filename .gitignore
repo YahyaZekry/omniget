@@ -25,10 +25,6 @@ src-tauri/gen/schemas
 .DS_Store
 Thumbs.db
 Desktop.ini
-# /docs e /.github contem arquivos do projeto (docs/backlog.md,
-# docs/plugin-development.md, .github/workflows/). Ignora-los inteiros fazia
-# qualquer arquivo novo falhar em silencio no `git add` — os que existem hoje
-# so entraram com `git add -f`. Ignorar apenas o que e de fato local.
 settings.local.json
 /.claude
 claude.md
@@ -43,7 +39,6 @@ claude.md
 *~
 /platforms
 /estudar/
-# Research / study notes — must never be published
 *-study.md
 *.study.md
 /ANALISE-PORTE.md
@@ -259,3 +254,27 @@ vite.config.ts.timestamp-*
 .vite/
 .varredura/
 remake/shots/
+
+# Local
+/.sessao/
+
+# Local
+*.md
+# Excecao: o plugin de agente do OmniGet e codigo entregue, nao anotacao. As
+# skills e os comandos do Claude Code *sao* arquivos .md por formato, entao a
+# regra acima os apagaria da arvore (PR #316).
+!claude-plugin/**/*.md
+/docs/
+/remake/
+/mobbin/
+/.visual-audit/
+/.impeccable/
+/.sessao/
+/.varredura/
+/.agents/
+/.claude/
+skills-lock.json
+/.shots/
+
+# Local
+/estudos/
