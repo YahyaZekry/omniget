@@ -506,6 +506,31 @@ fn keyring_entry(service: &str, account: &str) -> Result<keyring::Entry, String>
     keyring::Entry::new(service, account).map_err(|e| e.to_string())
 }
 
+/// Runs one keyring call on a dedicated OS thread and waits for it.
+///
+/// WHY the thread: on Linux the sync `keyring` API is built on
+/// `async-secret-service` over zbus, whose blocking wrapper `block_on`s the
+/// *current* thread. From a tokio worker — which is where every async Tauri
+/// command runs — that panics with "Cannot start a runtime from within a
+/// runtime", killing whichever task touched the keyring and leaving its caller
+/// waiting forever. A fresh OS thread has no runtime around it, so the same
+/// call is legal there. Keyring calls are rare (the read-through cache above
+/// sees to that), so the spawn cost is noise next to the DBus round trip.
+#[cfg(any(target_os = "macos", windows, target_os = "linux"))]
+fn off_runtime<T: Send + 'static>(
+    call: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    let spawned = std::thread::Builder::new()
+        .name("keyring".to_string())
+        .spawn(call);
+    match spawned {
+        Ok(handle) => handle
+            .join()
+            .unwrap_or_else(|_| Err("secrets: the keyring thread panicked".to_string())),
+        Err(e) => Err(format!("secrets: could not spawn the keyring thread: {}", e)),
+    }
+}
+
 /// Read the OS keyring whether or not [`use_keyring`] says to write to it. The
 /// gated wrapper below is what normal reads go through; this one exists for the
 /// last-resort read in [`load_secret`].
@@ -515,10 +540,14 @@ fn keyring_get_raw(service: &str, account: &str) -> Result<Option<String>, Strin
     if let Some(found) = test_keyring::intercept_read(service, account) {
         return Ok(found);
     }
-    keyring_entry(service, account).and_then(|e| match e.get_password() {
-        Ok(t) => Ok(Some(t)),
-        Err(keyring::Error::NoEntry) => Ok(None),
-        Err(err) => Err(err.to_string()),
+    let service = service.to_string();
+    let account = account.to_string();
+    off_runtime(move || {
+        keyring_entry(&service, &account).and_then(|e| match e.get_password() {
+            Ok(t) => Ok(Some(t)),
+            Err(keyring::Error::NoEntry) => Ok(None),
+            Err(err) => Err(err.to_string()),
+        })
     })
 }
 
@@ -528,9 +557,13 @@ fn keyring_delete_raw(service: &str, account: &str) -> Result<(), String> {
     if test_keyring::intercept_delete(service, account) {
         return Ok(());
     }
-    keyring_entry(service, account).and_then(|e| match e.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-        Err(err) => Err(err.to_string()),
+    let service = service.to_string();
+    let account = account.to_string();
+    off_runtime(move || {
+        keyring_entry(&service, &account).and_then(|e| match e.delete_credential() {
+            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+            Err(err) => Err(err.to_string()),
+        })
     })
 }
 
@@ -543,10 +576,12 @@ fn keyring_set(service: &str, account: &str, value: &str) -> Option<Result<(), S
     if test_keyring::intercept_write(service, account, value) {
         return Some(Ok(()));
     }
-    Some(
-        keyring_entry(service, account)
-            .and_then(|e| e.set_password(value).map_err(|e| e.to_string())),
-    )
+    let service = service.to_string();
+    let account = account.to_string();
+    let value = value.to_string();
+    Some(off_runtime(move || {
+        keyring_entry(&service, &account).and_then(|e| e.set_password(&value).map_err(|e| e.to_string()))
+    }))
 }
 
 #[cfg(any(target_os = "macos", windows, target_os = "linux"))]
