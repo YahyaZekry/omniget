@@ -34,6 +34,18 @@ Rust workspace: root `src-tauri` + `omniget-core` (shared engine) + `omniget-plu
 | `pnpm tauri build --bundles deb` | Release build (Linux deb; no signing key needed) |
 | `pnpm tauri build` | Release build, all bundle targets |
 | `pnpm tauri:appimage` | AppImage-only release build — syncs patched GTK plugin to `~/.cache/tauri/`, sets `NO_STRIP=1`, runs `tauri build --bundles appimage` |
+
+### Sync workflow (updated 2026-10-01 for the OpenSelena transition)
+
+Upstream moved from the dead `tonhowtf/omniget` to **`OpenSelena/omniget`** (remote `origin`). Remotes: `origin` = OpenSelena (fetch-only in practice), `fork` = YahyaZekry/omniget (own fork, fork-only fixes), `selena-fork` = YahyaZekry/omniget-1 (head repo for PRs to OpenSelena).
+
+1. `git checkout main && git fetch origin`
+2. `git merge origin/main` — expect conflicts whenever both lines touch identity: take **OpenSelena** for branding/SEO/flatpak (`llms.txt`, about page, `flatpak/com.openselena.*`), keep **ours** for the AI-agents surface and `secrets.rs`; the Tauri `identifier` stays `wtf.tonho.omniget` locally (data-dir continuity). Their nav adds Open Nami → nav test count moves to 9.
+3. Verify: `cargo check` (src-tauri), `pnpm check`, `pnpm test`.
+4. Push `fork main` after a look (fast-forward from the previous sync point), and PR app-side fixes to **OpenSelena** via `selena-fork` (branches based on `origin/main`).
+5. `pnpm tauri:appimage` and reinstall to `~/AppImages/omniget.appimage` (kill the app first; `rm`+`cp` if "Text file busy").
+
+Known divergence to watch: OpenSelena never got the Linux keyring/`secrets.rs` architecture (and our i18n sweep), and their `store.rs` has a legacy-migration shim for their service rebrand that our line skips — re-check both lists on every sync.
 | `pnpm check` | `svelte-kit sync && svelte-check --tsconfig ./tsconfig.json` |
 | `pnpm test` | vitest run |
 | `cargo check` | Typecheck Rust without building |
