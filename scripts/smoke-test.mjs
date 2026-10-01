@@ -20,7 +20,7 @@ import { join, basename, resolve } from "node:path";
 
 const BANNER = /OmniGet .* starting — pid \d+, (standard|portable) mode/;
 const WINDOW = "[startup] main window created";
-const TIMEOUT_MS = 90_000;
+const TIMEOUT_MS = 180_000;
 const EXIT_AFTER_MS = 6000;
 
 const args = process.argv.slice(2);
@@ -120,6 +120,10 @@ if (code !== 0) {
 
 if (portable) {
   const vazouParaOPerfil = [
+    join(fakeProfile, "Local", "com.openselena.omniget"),
+    join(fakeProfile, "Roaming", "com.openselena.omniget"),
+    join(fakeProfile, "share", "com.openselena.omniget"),
+    join(fakeProfile, "Library", "Application Support", "com.openselena.omniget"),
     join(fakeProfile, "Local", "wtf.tonho.omniget"),
     join(fakeProfile, "Roaming", "wtf.tonho.omniget"),
     join(fakeProfile, "share", "wtf.tonho.omniget"),

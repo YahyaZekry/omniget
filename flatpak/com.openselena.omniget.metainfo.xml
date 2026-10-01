@@ -1,71 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>wtf.tonho.omniget</id>
+  <id>com.openselena.omniget</id>
   <name>Omniget</name>
-  <summary>Course and video downloader, yt-dlp GUI and AI agents desktop app</summary>
+  <summary>Download media from multiple platforms</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
-  <developer id="wtf.tonho">
-    <name>Tonho</name>
+  <developer id="com.openselena">
+    <name>OpenSelena</name>
   </developer>
   <description>
     <p>
-      OmniGet downloads the Udemy and Hotmart courses you bought, YouTube, Instagram,
-      TikTok, X, Reddit, Twitch, Pinterest, Telegram, torrents and about 1,800 other
-      sites through a graphical interface for yt-dlp, then plays, reads, transcribes
-      and converts what you saved.
-    </p>
-    <p>
-      It also runs AI coding agents on your machine: Claude Code, Codex, Gemini CLI
-      and local Ollama models, with permissions, undo, background jobs, loops that
-      repeat until your tests pass, and a built-in MCP server.
+      Omniget is a desktop application to download videos, courses, and media
+      from platforms like YouTube, Udemy, Hotmart, Telegram, Instagram, TikTok,
+      Twitter, Reddit, Twitch, Pinterest, Bluesky, and Vimeo.
     </p>
     <p>Features include:</p>
     <ul>
-      <li>Udemy, Hotmart, Kiwify and Rocketseat course downloader with a course player</li>
-      <li>YouTube downloader and yt-dlp GUI with queue, resume and subtitles</li>
-      <li>Instagram, TikTok, X, Reddit, Pinterest, Twitch, Bilibili and Telegram downloads</li>
-      <li>156 tools in 24 categories: transcription, PDF, video, images and more</li>
-      <li>AI agents with per-folder permissions, undo, jobs, loops and triggers</li>
-      <li>MCP server with 49 tools for Claude Code, Cursor and VS Code</li>
-      <li>The World: an isometric house where your agents are seen working</li>
+      <li>Multi-platform media downloading</li>
+      <li>Course downloading from Udemy and Hotmart</li>
+      <li>Telegram media browser and batch downloader</li>
+      <li>Media format conversion</li>
+      <li>Queue management with concurrent downloads</li>
     </ul>
   </description>
-  <categories>
-    <category>Network</category>
-    <category>AudioVideo</category>
-    <category>Development</category>
-    <category>Utility</category>
-  </categories>
-  <keywords>
-    <keyword>downloader</keyword>
-    <keyword>yt-dlp</keyword>
-    <keyword>youtube</keyword>
-    <keyword>udemy</keyword>
-    <keyword>hotmart</keyword>
-    <keyword>course</keyword>
-    <keyword>video</keyword>
-    <keyword>instagram</keyword>
-    <keyword>tiktok</keyword>
-    <keyword>torrent</keyword>
-    <keyword>ai agents</keyword>
-    <keyword>claude code</keyword>
-    <keyword>codex</keyword>
-    <keyword>ollama</keyword>
-    <keyword>mcp</keyword>
-    <keyword>llm</keyword>
-  </keywords>
-  <url type="homepage">https://github.com/tonhowtf/omniget</url>
-  <url type="bugtracker">https://github.com/tonhowtf/omniget/issues</url>
-  <url type="vcs-browser">https://github.com/tonhowtf/omniget</url>
-  <launchable type="desktop-id">wtf.tonho.omniget.desktop</launchable>
+  <url type="homepage">https://github.com/OpenSelena/omniget</url>
+  <url type="bugtracker">https://github.com/OpenSelena/omniget/issues</url>
+  <url type="vcs-browser">https://github.com/OpenSelena/omniget</url>
+  <launchable type="desktop-id">com.openselena.omniget.desktop</launchable>
   <provides>
     <binary>omniget</binary>
   </provides>
   <screenshots>
     <screenshot type="default">
       <caption>Main download interface</caption>
-      <image>https://raw.githubusercontent.com/tonhowtf/omniget/main/flatpak/screenshots/main.png</image>
+      <image>https://raw.githubusercontent.com/OpenSelena/omniget/main/flatpak/screenshots/main.png</image>
     </screenshot>
   </screenshots>
   <branding>
@@ -74,12 +42,6 @@
   </branding>
   <content_rating type="oars-1.1" />
   <releases>
-    <release version="0.10.0" date="2026-09-19">
-      <description>
-        <p>OmniGet gains the system that goes around an AI agent. In the new LLM section you pick an agent, attach a folder and ask for a change: the agent reads, edits, applies patches and runs commands inside that folder only, asks before anything that writes and shows the command or the diff, and one click undoes a whole turn from a shadow git that never touches your repository. "Always" remembers a kind of command, such as git status, instead of a whole line. Jobs outlive the window, Loops repeat rounds until a check command passes or the rounds or minutes run out, and triggers start a job from a cron line or a webhook on the local bridge; the command line drives the same queue with omniget agent run, loop and jobs. Claude Code and Codex accounts plug in with their quota on screen, any CLI that speaks the Agent Client Protocol joins the roster as an agent, agents share a project knowledge base of markdown notes, and skills install from owner/repo after a scan. Models come from a local server or your own keys, with a router that falls back when a quota runs out.</p>
-        <p>The World is a house where your agents live: it is made on your first visit, the agents of your roster move in, follow a routine, walk to the workbench when a tool runs, and their energy is their quota. Open the house to get a code and a friend can walk in, see your agents and chat; your app stays the authority and the room server only relays, with a hello signed by your local profile instead of an account. The room server is a single binary you can host yourself. A floating Omni pet reacts to what the agents do, including Claude Code or Codex running in a terminal, and answers permission prompts. An optional limits strip on a screen edge shows one ring per coding assistant with how much of each usage limit is gone and when it resets; it is off by default and reads only the login each tool already keeps on your machine. The experimental OmniDisc chat was retired to make room for this. The agent shell is sandboxed on macOS only.</p>
-      </description>
-    </release>
     <release version="0.9.2" date="2026-09-11">
       <description>
         <p>Tools grows from 108 to 156, with eight new categories: Audio, CTF, Twitch, Music, Reddit, Bilibili, Games and LinkedIn. Video tools compress to a target size in two passes, make GIFs and WebPs, cut out silences, convert, burn and resync subtitles, take out flicker, grain and banding, stabilize shaky footage and turn a clip into a WhatsApp or Telegram sticker that fits the size limit. Audio tools normalize loudness to EBU R128 and remove background noise. PDF tools repair broken files, add a password, a watermark or page numbers, crop margins, build a bookmark outline, export clean Markdown and find text still sitting underneath a black redaction bar. Image tools read and strip EXIF and GPS, build favicon and app icon packs, compress in batches, find near-duplicates, slice and pack spritesheets and stitch scrolled screenshots. Files gains a secure shred, System an ad and telemetry hosts blocker, and CTF brings hashes, magic bytes and entropy, classical ciphers, XOR brute force, encodings and frequency analysis.</p>

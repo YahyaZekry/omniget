@@ -15,6 +15,7 @@ pub mod league;
 pub mod llm;
 pub mod media_history;
 pub mod omnidisc;
+pub mod open_nami;
 pub mod p2p;
 pub mod pet;
 pub mod plugins;

@@ -412,7 +412,7 @@ pub fn run() {
                 if core::portable::portable_webview_dir_from_env().is_some() {
                     tracing::warn!(
                         "[portable] no macOS o WebView guarda dados em ~/Library mesmo em modo \
-                         portatil — o wry nao permite redirecionar. Ver github.com/tonhowtf/omniget/issues/227"
+                         portatil — o wry nao permite redirecionar. Ver github.com/OpenSelena/omniget/issues/227"
                     );
                 }
 
@@ -1597,6 +1597,14 @@ pub fn run() {
             commands::world::tier::world_tier_get,
             commands::world::tier::world_tier_set,
             commands::world::tier::world_calibration_save,
+            commands::open_nami::open_nami_check_python_dependencies,
+            commands::open_nami::open_nami_run_gallery_dl_download,
+            commands::open_nami::open_nami_cancel_download,
+            commands::open_nami::open_nami_save_app_settings,
+            commands::open_nami::open_nami_load_app_settings,
+            commands::open_nami::open_nami_load_profiles,
+            commands::open_nami::open_nami_save_profile,
+            commands::open_nami::open_nami_delete_profile,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

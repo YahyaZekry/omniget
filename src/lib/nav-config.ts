@@ -16,6 +16,7 @@ export const CORE_NAV_ITEMS: NavItem[] = [
   { href: "/llm", labelKey: "nav.llm", icon: "llm", group: "primary", order: 24 },
   { href: "/world", labelKey: "nav.world", icon: "world", group: "primary", order: 26 },
   { href: "/tools", labelKey: "nav.tools", icon: "tools", group: "primary", order: 27 },
+  { href: "/open-nami", label: "Open Nami", icon: "open-nami", group: "primary", order: 28 },
   { href: "/marketplace", labelKey: "nav.marketplace", icon: "marketplace", group: "app", order: 30 },
   { href: "/settings", labelKey: "nav.settings", icon: "settings", group: "app", order: 40 },
   { href: "/about", labelKey: "nav.about", icon: "about", group: "app", order: 50 },
